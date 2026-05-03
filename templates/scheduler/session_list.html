@@ -6,7 +6,7 @@
 <div class="page-header">
     <div>
         <h1>Sessions</h1>
-        <p>All tutoring sessions</p>
+        <p>All tutoring sessions — times shown in Cairo timezone (Africa/Cairo)</p>
     </div>
     <a href="{% url 'scheduler:session_create' %}" class="btn btn-primary">
         <i class="fas fa-plus me-2"></i>New Session
@@ -21,10 +21,10 @@
                 <label class="form-label">Status</label>
                 <select name="status" class="form-select">
                     <option value="">All Statuses</option>
-                    <option value="scheduled" {% if status_filter == "scheduled" %}selected{% endif %}>Scheduled</option>
-                    <option value="completed" {% if status_filter == "completed" %}selected{% endif %}>Completed</option>
-                    <option value="cancelled" {% if status_filter == "cancelled" %}selected{% endif %}>Cancelled</option>
-                    <option value="missed" {% if status_filter == "missed" %}selected{% endif %}>Missed</option>
+                    <option value="scheduled"  {% if status_filter == "scheduled"  %}selected{% endif %}>Scheduled</option>
+                    <option value="completed"  {% if status_filter == "completed"  %}selected{% endif %}>Completed</option>
+                    <option value="cancelled"  {% if status_filter == "cancelled"  %}selected{% endif %}>Cancelled</option>
+                    <option value="missed"     {% if status_filter == "missed"     %}selected{% endif %}>Missed</option>
                 </select>
             </div>
             <div class="col-md-4">
@@ -32,7 +32,9 @@
                 <select name="student" class="form-select">
                     <option value="">All Students</option>
                     {% for s in students %}
-                    <option value="{{ s.pk }}" {% if student_filter == s.pk|stringformat:"s" %}selected{% endif %}>{{ s.name }}</option>
+                    <option value="{{ s.pk }}" {% if student_filter == s.pk|stringformat:"s" %}selected{% endif %}>
+                        {{ s.name }}{% if s.country %} ({{ s.country }}){% endif %}
+                    </option>
                     {% endfor %}
                 </select>
             </div>
@@ -51,7 +53,7 @@
         <thead>
             <tr>
                 <th>Student</th>
-                <th>Date & Time</th>
+                <th>Date & Time <small class="fw-normal text-muted">(Cairo)</small></th>
                 <th>Duration</th>
                 <th>Status</th>
                 <th>Type</th>
@@ -63,20 +65,34 @@
             <tr>
                 <td>
                     <div class="d-flex align-items-center gap-2">
-                        <div class="student-avatar" style="width:32px;height:32px;font-size:13px">{{ session.student.name|first|upper }}</div>
-                        <div class="fw-semibold">{{ session.student.name }}</div>
+                        <div class="student-avatar" style="width:32px;height:32px;font-size:13px">
+                            {{ session.student.name|first|upper }}
+                        </div>
+                        <div>
+                            <div class="fw-semibold">{{ session.student.name }}</div>
+                            {% if session.student.country %}
+                            <div class="text-muted" style="font-size:11px">{{ session.student.country }}</div>
+                            {% endif %}
+                        </div>
                     </div>
                 </td>
                 <td>
                     <div class="fw-semibold">{{ session.start_time|date:"M j, Y" }}</div>
-                    <div class="text-muted" style="font-size:12px">{{ session.start_time|date:"H:i" }} – {{ session.end_time|date:"H:i" }}</div>
+                    <div class="text-muted" style="font-size:12px">
+                        {{ session.start_time|date:"H:i" }} – {{ session.end_time|date:"H:i" }}
+                        <span style="font-size:10px;color:var(--text-muted)">Cairo</span>
+                    </div>
                 </td>
                 <td>{{ session.duration_minutes }} min</td>
                 <td><span class="badge badge-{{ session.status }}">{{ session.get_status_display }}</span></td>
                 <td>
-                    {% if session.is_makeup %}<span class="badge bg-warning text-dark">Makeup</span>
-                    {% elif session.is_recurring %}<span class="badge bg-info text-dark">Recurring</span>
-                    {% else %}<span class="badge bg-light text-muted">One-time</span>{% endif %}
+                    {% if session.is_makeup %}
+                        <span class="badge bg-warning text-dark">Makeup</span>
+                    {% elif session.is_recurring %}
+                        <span class="badge bg-info text-dark">Recurring</span>
+                    {% else %}
+                        <span class="badge bg-light text-muted">One-time</span>
+                    {% endif %}
                 </td>
                 <td>
                     <div class="d-flex gap-1">

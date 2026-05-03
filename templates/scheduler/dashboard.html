@@ -5,8 +5,11 @@
 {% block content %}
 <div class="page-header">
     <div>
-        <h1>Good {% now "H" as hour %}{% if hour < "12" %}Morning{% elif hour < "17" %}Afternoon{% else %}Evening{% endif %}! 👋</h1>
-        <p>Here's what's happening today, {{ today|date:"l, F j, Y" }}</p>
+        <h1>
+            {% now "H" as hour %}
+            {% if hour < "12" %}Good Morning{% elif hour < "17" %}Good Afternoon{% else %}Good Evening{% endif %}!
+        </h1>
+        <p>{{ today|date:"l, F j, Y" }} · Cairo time (Africa/Cairo)</p>
     </div>
     <a href="{% url 'scheduler:session_create' %}?suggest=1" class="btn btn-primary">
         <i class="fas fa-magic me-2"></i>Smart Schedule
@@ -53,20 +56,21 @@
     </div>
 </div>
 
-<!-- Alerts -->
+<!-- Conflict alerts -->
 {% if conflicts %}
 <div class="alert alert-danger mb-4">
     <i class="fas fa-exclamation-triangle me-2"></i>
-    <strong>Scheduling Conflict!</strong> You have {{ conflicts|length }} overlapping session(s) today.
+    <strong>Scheduling Conflict!</strong>
+    {{ conflicts|length }} overlapping session{{ conflicts|length|pluralize }} detected today. Please review and resolve.
 </div>
 {% endif %}
 
 <div class="row g-4">
-    <!-- Today's Sessions -->
+    <!-- Today's sessions -->
     <div class="col-lg-7">
         <div class="card">
             <div class="card-header">
-                <span><i class="fas fa-clock me-2 text-primary"></i>Today's Sessions</span>
+                <span><i class="fas fa-clock me-2 text-primary"></i>Today's Sessions <small class="fw-normal text-muted">(Cairo)</small></span>
                 <a href="{% url 'scheduler:session_create' %}" class="btn btn-sm btn-outline-primary">
                     <i class="fas fa-plus me-1"></i>Add
                 </a>
@@ -78,11 +82,12 @@
                     <div class="session-item">
                         <div class="session-time">{{ session.start_time|date:"H:i" }}</div>
                         <div class="session-dot {{ session.status }}"></div>
-                        <div class="flex-1">
+                        <div class="flex-grow-1">
                             <div class="session-name">{{ session.student.name }}</div>
                             <div class="session-meta">
                                 {{ session.start_time|date:"H:i" }} – {{ session.end_time|date:"H:i" }}
                                 ({{ session.duration_minutes }} min)
+                                {% if session.student.country %}· {{ session.student.country }}{% endif %}
                                 {% if session.is_makeup %}<span class="badge badge-missed ms-1">Makeup</span>{% endif %}
                             </div>
                         </div>
@@ -115,11 +120,17 @@
                 <div class="px-3">
                     {% for session in upcoming %}
                     <div class="session-item">
-                        <div class="session-time">{{ session.start_time|date:"M d" }}<br><small>{{ session.start_time|date:"H:i" }}</small></div>
+                        <div class="session-time">
+                            {{ session.start_time|date:"M d" }}<br>
+                            <small>{{ session.start_time|date:"H:i" }}</small>
+                        </div>
                         <div class="session-dot scheduled"></div>
-                        <div class="flex-1">
+                        <div class="flex-grow-1">
                             <div class="session-name">{{ session.student.name }}</div>
-                            <div class="session-meta">{{ session.duration_minutes }} min</div>
+                            <div class="session-meta">
+                                {{ session.duration_minutes }} min
+                                {% if session.student.country %}· {{ session.student.country }}{% endif %}
+                            </div>
                         </div>
                         <a href="{% url 'scheduler:session_detail' session.pk %}" class="btn btn-sm btn-outline-secondary btn-icon">
                             <i class="fas fa-eye"></i>

@@ -7,8 +7,12 @@
     <div class="d-flex align-items-center gap-3">
         <div class="student-avatar" style="width:56px;height:56px;font-size:22px">{{ student.name|first|upper }}</div>
         <div>
-            <h1>{{ student.name }}</h1>
-            <p>{% if student.phone %}<i class="fas fa-phone me-1"></i>{{ student.phone }} · {% endif %}Joined {{ student.created_at|date:"M Y" }}</p>
+            <h1>{{ flag }} {{ student.name }}</h1>
+            <p>
+                {% if student.country %}<i class="fas fa-globe me-1"></i>{{ student.country }} · {% endif %}
+                {% if student.phone %}<i class="fas fa-phone me-1"></i>{{ student.phone }} · {% endif %}
+                <i class="fas fa-clock me-1"></i>{{ tz_label }}
+            </p>
         </div>
     </div>
     <div class="d-flex gap-2">
@@ -25,7 +29,7 @@
 </div>
 
 <div class="row g-4">
-    <!-- Subscription -->
+    <!-- Subscription + info -->
     <div class="col-lg-4">
         <div class="card mb-3">
             <div class="card-header"><i class="fas fa-tags me-2 text-purple"></i>Subscription</div>
@@ -49,7 +53,7 @@
                 <div style="font-size:13px;color:var(--text-muted)" class="mb-1">Per session: <strong>{{ subscription.session_rate|floatformat:0 }} EGP</strong></div>
                 <hr>
                 <div style="background:linear-gradient(135deg,var(--primary),var(--secondary));border-radius:10px;padding:14px;color:white;text-align:center">
-                    <div style="font-size:12px;opacity:.8">Monthly Earnings</div>
+                    <div style="font-size:12px;opacity:.8">Estimated Monthly Earnings</div>
                     <div style="font-size:28px;font-weight:800">{{ subscription.monthly_earnings|floatformat:0 }}</div>
                     <div style="font-size:11px;opacity:.7">EGP</div>
                 </div>
@@ -63,14 +67,47 @@
             </div>
         </div>
 
-        {% if student.notes %}
         <div class="card">
-            <div class="card-header"><i class="fas fa-sticky-note me-2"></i>Notes</div>
+            <div class="card-header"><i class="fas fa-info-circle me-2"></i>Student Details</div>
             <div class="card-body">
-                <p style="font-size:14px;color:var(--text-muted);margin:0">{{ student.notes }}</p>
+                <table class="table table-sm table-borderless mb-0">
+                    {% if student.country %}
+                    <tr>
+                        <td class="text-muted" style="width:40%">Country</td>
+                        <td>{{ flag }} {{ student.country }}</td>
+                    </tr>
+                    {% endif %}
+                    <tr>
+                        <td class="text-muted">Timezone</td>
+                        <td style="font-size:12px">{{ tz_label }}</td>
+                    </tr>
+                    {% if student.phone %}
+                    <tr>
+                        <td class="text-muted">Phone</td>
+                        <td>{{ student.phone }}</td>
+                    </tr>
+                    {% endif %}
+                    <tr>
+                        <td class="text-muted">Joined</td>
+                        <td>{{ student.created_at|date:"M Y" }}</td>
+                    </tr>
+                    <tr>
+                        <td class="text-muted">Status</td>
+                        <td>
+                            {% if student.is_active %}
+                            <span class="badge badge-completed">Active</span>
+                            {% else %}
+                            <span class="badge bg-secondary">Inactive</span>
+                            {% endif %}
+                        </td>
+                    </tr>
+                </table>
+                {% if student.notes %}
+                <hr>
+                <p style="font-size:13px;color:var(--text-muted);margin:0">{{ student.notes }}</p>
+                {% endif %}
             </div>
         </div>
-        {% endif %}
     </div>
 
     <!-- Recent sessions -->
@@ -87,7 +124,7 @@
                 <table class="table">
                     <thead>
                         <tr>
-                            <th>Date & Time</th>
+                            <th>Date & Time (Cairo)</th>
                             <th>Duration</th>
                             <th>Status</th>
                             <th>Earnings</th>
@@ -99,7 +136,10 @@
                         <tr>
                             <td>
                                 <div class="fw-semibold">{{ session.start_time|date:"M j, Y" }}</div>
-                                <div class="text-muted" style="font-size:12px">{{ session.start_time|date:"H:i" }} – {{ session.end_time|date:"H:i" }}</div>
+                                <div class="text-muted" style="font-size:12px">
+                                    {{ session.start_time|date:"H:i" }} – {{ session.end_time|date:"H:i" }}
+                                    <span class="text-muted" style="font-size:10px">Cairo</span>
+                                </div>
                             </td>
                             <td>{{ session.duration_minutes }} min</td>
                             <td><span class="badge badge-{{ session.status }}">{{ session.get_status_display }}</span></td>

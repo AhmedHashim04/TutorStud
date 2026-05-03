@@ -1,200 +1,376 @@
 """
-Scheduling engine: overlap detection, prayer time blocking,
-working hours validation, and next-slot suggestion.
+Scheduling engine for TutorSys.
+
+Responsibilities:
+  - Timezone conversion utilities (UTC ↔ Cairo ↔ student local)
+  - Overlap detection between sessions
+  - Working hours & exception day enforcement
+  - Prayer-time blocking window calculation
+  - Full session validation (combines all rules above)
+  - Smart next-slot suggestion
+  - Quick reschedule
+  - Makeup session validation
+  - Occupancy rate analytics
+
+All datetimes are stored in UTC in the database.
+All scheduling logic operates in Africa/Cairo (the tutor's local time).
+Student display times are converted to the student's own timezone on the fly.
+
+Prayer-time blocking rule:
+  - Adhan → adhan+PRAYER_BUFFER_START minutes  : ALLOWED (preparing)
+  - Adhan+PRAYER_BUFFER_START → adhan+PRAYER_BUFFER_END : BLOCKED
+  (Default: 10 min grace, then 15-min blocked window → until adhan+25)
 """
 from datetime import datetime, timedelta, time
 from django.utils import timezone
 from django.conf import settings
-from django.utils import timezone as djtz
 import pytz
 
+# Tutor is always based in Cairo
 CAIRO_TZ = pytz.timezone('Africa/Cairo')
 
 
-def get_student_tz(student):
-    try:
-        return pytz.timezone(student.timezone or 'UTC')
-    except Exception:
-        return pytz.timezone('UTC')
-
+# ─── Timezone Helpers ────────────────────────────────────────────────────────
 
 def to_cairo(dt):
+    """Convert any datetime (naive or aware) to a Cairo-aware datetime."""
     if timezone.is_naive(dt):
-        dt = timezone.make_aware(dt, CAIRO_TZ)
+        dt = CAIRO_TZ.localize(dt)
     return dt.astimezone(CAIRO_TZ)
 
 
+def make_aware_cairo(d, t):
+    """Combine a date and a time into a Cairo-aware datetime."""
+    return CAIRO_TZ.localize(datetime.combine(d, t))
+
+
 def to_student_tz(dt, student):
+    """Convert a datetime to the student's local timezone."""
+    try:
+        tz = pytz.timezone(student.timezone or 'UTC')
+    except Exception:
+        tz = pytz.UTC
     if timezone.is_naive(dt):
         dt = timezone.make_aware(dt, timezone.utc)
-    return dt.astimezone(get_student_tz(student))
+    return dt.astimezone(tz)
 
 
-def make_aware_cairo(d, t):
-    naive = datetime.combine(d, t)
-    return CAIRO_TZ.localize(naive)
+def ensure_aware(dt, default_tz=CAIRO_TZ):
+    """Return an aware datetime; treat naive datetimes as Cairo local time."""
+    if timezone.is_naive(dt):
+        return default_tz.localize(dt)
+    return dt
 
 
-def make_aware_utc_from_cairo(d, t):
-    return make_aware_cairo(d, t).astimezone(pytz.UTC)
-
+# ─── Overlap Detection ───────────────────────────────────────────────────────
 
 def sessions_overlap(start1, end1, start2, end2):
+    """
+    Return True if two half-open intervals [start1, end1) and [start2, end2)
+    overlap. Touching boundaries (end1 == start2) do NOT overlap.
+    """
     return start1 < end2 and start2 < end1
 
 
 def check_overlap(start_time, end_time, exclude_session_id=None):
+    """
+    Return a list of scheduled Session objects that overlap [start_time, end_time).
+    Completed/cancelled/missed sessions are intentionally ignored — they are
+    historical records and no longer occupy the slot.
+    """
     from .models import Session
+    # Ensure aware datetimes so the ORM comparison is timezone-correct
+    start_time = ensure_aware(start_time)
+    end_time = ensure_aware(end_time)
+
     qs = Session.objects.filter(
-        status__in=['scheduled'],
+        status='scheduled',
         start_time__lt=end_time,
         end_time__gt=start_time,
-    )
+    ).select_related('student')
+
     if exclude_session_id:
         qs = qs.exclude(pk=exclude_session_id)
     return list(qs)
 
 
+# ─── Working Hours ────────────────────────────────────────────────────────────
+
 def get_working_hours(d):
+    """
+    Return the WorkingHours record for the given date, or None if the tutor
+    is not working on that weekday (or is_working=False).
+    """
     from .models import WorkingHours
-    weekday = d.weekday()
     try:
-        return WorkingHours.objects.get(weekday=weekday, is_working=True)
+        return WorkingHours.objects.get(weekday=d.weekday(), is_working=True)
     except WorkingHours.DoesNotExist:
         return None
 
 
 def is_within_working_hours(start_time, end_time):
+    """
+    Return True if [start_time, end_time) fits entirely within the tutor's
+    working hours for that Cairo day.
+    """
     d = to_cairo(start_time).date()
     wh = get_working_hours(d)
     if not wh:
         return False
     work_start = make_aware_cairo(d, wh.start_time)
     work_end = make_aware_cairo(d, wh.end_time)
-    return start_time >= work_start and end_time <= work_end
+    return ensure_aware(start_time) >= work_start and ensure_aware(end_time) <= work_end
 
+
+# ─── Exception Days ───────────────────────────────────────────────────────────
 
 def is_exception_day(d):
+    """Return True if the given date is marked as an exception (tutor unavailable)."""
     from .models import ExceptionDay
     return ExceptionDay.objects.filter(date=d).exists()
 
 
+# ─── Prayer-Time Blocking ─────────────────────────────────────────────────────
+
 def get_prayer_blocked_intervals(d):
+    """
+    Return a list of (block_start, block_end) aware datetimes for the given
+    Cairo date.  Each interval represents the period during which no session
+    may be held (adhan+BUFFER_START → adhan+BUFFER_END).
+    """
     from .models import PrayerTime
     buf_start = getattr(settings, 'PRAYER_BUFFER_START', 10)
     buf_end = getattr(settings, 'PRAYER_BUFFER_END', 25)
-    prayers = PrayerTime.objects.filter(date=d)
     intervals = []
-    for p in prayers:
+    for p in PrayerTime.objects.filter(date=d):
         adhan_dt = make_aware_cairo(d, p.adhan_time)
-        intervals.append((adhan_dt + timedelta(minutes=buf_start), adhan_dt + timedelta(minutes=buf_end)))
+        intervals.append((
+            adhan_dt + timedelta(minutes=buf_start),
+            adhan_dt + timedelta(minutes=buf_end),
+        ))
     return intervals
 
 
 def overlaps_prayer_time(start_time, end_time):
+    """Return True if [start_time, end_time) overlaps any prayer-blocked interval."""
     d = to_cairo(start_time).date()
     for block_start, block_end in get_prayer_blocked_intervals(d):
-        if sessions_overlap(start_time, end_time, block_start, block_end):
+        if sessions_overlap(
+            ensure_aware(start_time), ensure_aware(end_time),
+            block_start, block_end
+        ):
             return True
     return False
 
 
+# ─── Full Session Validation ─────────────────────────────────────────────────
+
 def validate_session(start_time, end_time, exclude_session_id=None):
+    """
+    Validate a proposed session slot against all business rules.
+    Returns a list of human-readable error strings (empty list = valid).
+
+    Rules checked (in order):
+      1. start_time must be before end_time
+      2. The date must not be an exception day
+      3. The slot must fall within working hours
+      4. The slot must not overlap any prayer-blocked window
+      5. The slot must not overlap any other scheduled session
+    """
     errors = []
-    local_start = to_cairo(start_time)
-    d = local_start.date()
+
+    # Normalise to Cairo-aware datetimes
+    start_time = to_cairo(ensure_aware(start_time))
+    end_time = to_cairo(ensure_aware(end_time))
+
+    if start_time >= end_time:
+        errors.append("Session end time must be after start time.")
+        return errors  # No point checking further
+
+    d = start_time.date()
+
     if is_exception_day(d):
-        errors.append(f"{d} is marked as an exception day (tutor unavailable).")
+        errors.append(f"{d.strftime('%A, %B %-d')} is marked as an exception day (tutor unavailable).")
+
     if not is_within_working_hours(start_time, end_time):
         wh = get_working_hours(d)
         if wh:
-            errors.append(f"Session must be within working hours ({wh.start_time} - {wh.end_time}).")
+            errors.append(
+                f"Session must be within working hours "
+                f"({wh.start_time.strftime('%H:%M')} – {wh.end_time.strftime('%H:%M')} Cairo time)."
+            )
         else:
-            errors.append("Tutor is not working on this day.")
+            errors.append(f"Tutor is not working on {d.strftime('%A')}.")
+
     if overlaps_prayer_time(start_time, end_time):
-        errors.append("Session overlaps a prayer time blocked interval.")
+        errors.append(
+            "Session overlaps a prayer-time blocked window "
+            f"(adhan +{getattr(settings, 'PRAYER_BUFFER_START', 10)} "
+            f"→ +{getattr(settings, 'PRAYER_BUFFER_END', 25)} minutes)."
+        )
+
     conflicts = check_overlap(start_time, end_time, exclude_session_id)
     if conflicts:
         names = ', '.join(s.student.name for s in conflicts)
         errors.append(f"Time slot conflicts with existing session(s): {names}.")
+
     return errors
 
 
+# ─── Next Available Slot Suggestion ──────────────────────────────────────────
+
 def suggest_next_slot(duration_minutes, from_dt=None, max_days=14):
+    """
+    Find and return the earliest available Cairo-aware slot of the given
+    duration, starting from `from_dt` (defaults to now).
+
+    The search:
+      - Skips exception days entirely
+      - Skips non-working days
+      - Skips before working-hours start / moves to next day when past end
+      - Jumps past prayer-blocked windows
+      - Jumps past existing scheduled sessions
+      - Moves in 15-minute increments
+      - Gives up after `max_days` days and returns None
+    """
     if from_dt is None:
         from_dt = timezone.now()
-    from_dt = to_cairo(from_dt)
+    current = to_cairo(from_dt).replace(second=0, microsecond=0)
+
+    # Round up to the next 15-minute boundary
+    rem = current.minute % 15
+    if rem:
+        current += timedelta(minutes=15 - rem)
+
     duration = timedelta(minutes=duration_minutes)
-    deadline = from_dt + timedelta(days=max_days)
-    current = from_dt.replace(second=0, microsecond=0)
-    remainder = current.minute % 15
-    if remainder:
-        current += timedelta(minutes=(15 - remainder))
+    deadline = current + timedelta(days=max_days)
+
     while current < deadline:
-        d = to_cairo(current).date()
+        d = current.date()
+
+        # Skip exception days
         if is_exception_day(d):
             current = make_aware_cairo(d + timedelta(days=1), time(0, 0))
             continue
+
+        # Skip non-working days
         wh = get_working_hours(d)
         if not wh:
             current = make_aware_cairo(d + timedelta(days=1), time(0, 0))
             continue
+
         work_start = make_aware_cairo(d, wh.start_time)
         work_end = make_aware_cairo(d, wh.end_time)
+
+        # Jump to start of working hours if too early
         if current < work_start:
             current = work_start
             continue
+
+        # Move to next day if no room left today
         if current + duration > work_end:
             current = make_aware_cairo(d + timedelta(days=1), time(0, 0))
             continue
+
         slot_end = current + duration
+
+        # Check prayer-blocked windows; jump past any that overlap
+        prayer_jumped = False
         for block_start, block_end in get_prayer_blocked_intervals(d):
             if sessions_overlap(current, slot_end, block_start, block_end):
-                current = block_end
+                current = block_end  # jump to end of blocked window
+                prayer_jumped = True
                 break
-        else:
-            conflicts = check_overlap(current, slot_end)
-            if conflicts:
-                current = to_cairo(max(s.end_time for s in conflicts))
-                continue
-            return current
-    return None
+        if prayer_jumped:
+            continue
 
+        # Check existing sessions; jump past any conflicts
+        conflicts = check_overlap(current, slot_end)
+        if conflicts:
+            current = to_cairo(max(s.end_time for s in conflicts))
+            continue
+
+        return current  # Valid slot found
+
+    return None  # No slot found within the search window
+
+
+# ─── Quick Reschedule ─────────────────────────────────────────────────────────
 
 def quick_reschedule(session):
-    duration = session.duration_minutes
-    new_start = suggest_next_slot(duration, from_dt=timezone.now())
+    """
+    Move session to the nearest available valid slot from now.
+    Returns (new_start, new_end) as Cairo-aware datetimes, or (None, None).
+    """
+    new_start = suggest_next_slot(session.duration_minutes, from_dt=timezone.now())
     if new_start:
-        return new_start, new_start + timedelta(minutes=duration)
+        return new_start, new_start + timedelta(minutes=session.duration_minutes)
     return None, None
 
 
+# ─── Makeup Session Validation ───────────────────────────────────────────────
+
 def validate_makeup_session(original_session, new_start, new_end):
+    """
+    Validate a makeup session.  The makeup must:
+      - Be on or after the original session's date
+      - Be within MAKEUP_SESSION_WINDOW_DAYS of the original session
+      - Pass all normal session validation rules
+
+    Returns a list of error strings.
+    """
     window_days = getattr(settings, 'MAKEUP_SESSION_WINDOW_DAYS', 7)
     orig_date = to_cairo(original_session.start_time).date()
-    new_date = to_cairo(new_start).date()
+    new_date = to_cairo(ensure_aware(new_start)).date()
     delta = (new_date - orig_date).days
+
     errors = []
     if delta < 0:
-        errors.append("Make-up session cannot be before the original session.")
-    if delta > window_days:
-        errors.append(f"Make-up session must be within {window_days} days of the original.")
+        errors.append("Make-up session cannot be scheduled before the original session date.")
+    elif delta > window_days:
+        errors.append(
+            f"Make-up session must be within {window_days} days of the original session "
+            f"(original was on {orig_date.strftime('%B %-d')})."
+        )
+
     errors += validate_session(new_start, new_end)
     return errors
 
 
+# ─── Occupancy Rate ───────────────────────────────────────────────────────────
+
 def get_occupancy_rate(start_date, end_date):
+    """
+    Calculate the tutor's occupancy rate over a date range:
+      occupancy = total_booked_hours / total_available_hours × 100
+
+    Only completed sessions count as booked.
+    Returns a float percentage (0–100), or 0 if no available hours.
+    """
     from .models import Session
+
     total_available = timedelta()
     total_booked = timedelta()
+
     current = start_date
     while current <= end_date:
         if not is_exception_day(current):
             wh = get_working_hours(current)
             if wh:
-                total_available += timedelta(hours=wh.end_time.hour - wh.start_time.hour, minutes=wh.end_time.minute - wh.start_time.minute)
+                total_available += timedelta(
+                    hours=wh.end_time.hour - wh.start_time.hour,
+                    minutes=wh.end_time.minute - wh.start_time.minute,
+                )
         current += timedelta(days=1)
-    sessions = Session.objects.filter(start_time__date__gte=start_date, start_time__date__lte=end_date, status='completed')
+
+    sessions = Session.objects.filter(
+        start_time__date__gte=start_date,
+        start_time__date__lte=end_date,
+        status='completed',
+    )
     for s in sessions:
-        total_booked += (s.end_time - s.start_time)
-    return 0 if total_available.total_seconds() == 0 else round((total_booked.total_seconds() / total_available.total_seconds()) * 100, 1)
+        total_booked += s.end_time - s.start_time
+
+    if total_available.total_seconds() == 0:
+        return 0
+    return round(total_booked.total_seconds() / total_available.total_seconds() * 100, 1)

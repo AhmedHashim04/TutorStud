@@ -10,7 +10,7 @@
 <div class="page-header">
     <div>
         <h1>Session Calendar</h1>
-        <p>View and manage all sessions visually</p>
+        <p>All times shown in Cairo timezone (Africa/Cairo, UTC+2/+3)</p>
     </div>
     <div class="d-flex gap-2">
         <button class="btn btn-outline-secondary btn-sm" data-bs-toggle="modal" data-bs-target="#suggestModal">
@@ -23,7 +23,8 @@
 </div>
 
 <!-- Legend -->
-<div class="d-flex gap-3 mb-3 flex-wrap">
+<div class="d-flex gap-3 mb-3 flex-wrap align-items-center">
+    <span style="font-size:12px;font-weight:600;color:var(--text-muted)">Legend:</span>
     <div class="d-flex align-items-center gap-2"><span style="width:14px;height:14px;border-radius:4px;background:#3b82f6;display:inline-block"></span><span style="font-size:13px">Scheduled</span></div>
     <div class="d-flex align-items-center gap-2"><span style="width:14px;height:14px;border-radius:4px;background:#10b981;display:inline-block"></span><span style="font-size:13px">Completed</span></div>
     <div class="d-flex align-items-center gap-2"><span style="width:14px;height:14px;border-radius:4px;background:#ef4444;display:inline-block"></span><span style="font-size:13px">Cancelled</span></div>
@@ -44,9 +45,7 @@
                 <h5 class="modal-title fw-bold" id="modal-title">Session Details</h5>
                 <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
             </div>
-            <div class="modal-body">
-                <div id="modal-body"></div>
-            </div>
+            <div class="modal-body" id="modal-body"></div>
             <div class="modal-footer border-0 pt-0">
                 <a id="modal-view-btn" href="#" class="btn btn-primary btn-sm">
                     <i class="fas fa-eye me-1"></i>View Details
@@ -57,7 +56,7 @@
     </div>
 </div>
 
-<!-- Suggest slot modal -->
+<!-- Smart slot finder modal -->
 <div class="modal fade" id="suggestModal" tabindex="-1">
     <div class="modal-dialog">
         <div class="modal-content" style="border-radius:12px;border:none">
@@ -74,7 +73,7 @@
                     </select>
                 </div>
                 <div class="mb-3">
-                    <label class="form-label">Search from</label>
+                    <label class="form-label">Search from (Cairo time)</label>
                     <input type="datetime-local" id="suggest-from" class="form-control">
                 </div>
                 <button class="btn btn-primary w-100" onclick="findSlot()">
@@ -90,14 +89,14 @@
 {% block extra_js %}
 <script src="https://cdn.jsdelivr.net/npm/fullcalendar@6.1.10/index.global.min.js"></script>
 <script>
-document.addEventListener('DOMContentLoaded', function() {
+document.addEventListener('DOMContentLoaded', function () {
     const calendarEl = document.getElementById('calendar');
     const calendar = new FullCalendar.Calendar(calendarEl, {
         initialView: 'timeGridWeek',
         headerToolbar: {
-            left: 'prev,next today',
+            left:   'prev,next today',
             center: 'title',
-            right: 'dayGridMonth,timeGridWeek,timeGridDay,listWeek'
+            right:  'dayGridMonth,timeGridWeek,timeGridDay,listWeek'
         },
         slotMinTime: '06:00:00',
         slotMaxTime: '23:00:00',
@@ -105,22 +104,48 @@ document.addEventListener('DOMContentLoaded', function() {
         height: 'auto',
         events: '/api/sessions/',
         eventTimeFormat: { hour: '2-digit', minute: '2-digit', hour12: false },
-        eventClick: function(info) {
+        eventClick: function (info) {
             const props = info.event.extendedProps;
-            document.getElementById('modal-title').textContent = props.student;
+            const statusBadge = {
+                scheduled: 'badge-scheduled',
+                completed: 'badge-completed',
+                cancelled: 'badge-cancelled',
+                missed:    'badge-missed',
+            }[props.status] || 'bg-secondary';
+
+            let timezoneRow = '';
+            if (!props.same_tz) {
+                timezoneRow = `
+                    <tr>
+                        <td class="text-muted">Student Time</td>
+                        <td class="fw-semibold">
+                            ${props.student_start} – ${props.student_end}
+                            <span class="badge bg-info text-dark ms-1" style="font-size:10px">${props.student_tz}</span>
+                        </td>
+                    </tr>`;
+            }
+
+            document.getElementById('modal-title').innerHTML =
+                `${props.flag || '🌍'} ${props.student}`;
             document.getElementById('modal-body').innerHTML = `
-                <div class="mb-2"><span class="badge badge-${props.status}">${props.status.charAt(0).toUpperCase() + props.status.slice(1)}</span>${props.is_makeup ? ' <span class="badge badge-missed">Makeup</span>' : ''}</div>
-                <table class="table table-sm">
-                    <tr><td class="text-muted">Student</td><td class="fw-semibold">${props.student}</td></tr>
-                    <tr><td class="text-muted">Start</td><td>${info.event.start.toLocaleString('en-GB',{dateStyle:'medium',timeStyle:'short'})}</td></tr>
-                    <tr><td class="text-muted">End</td><td>${info.event.end.toLocaleString('en-GB',{dateStyle:'medium',timeStyle:'short'})}</td></tr>
+                <div class="mb-2">
+                    <span class="badge ${statusBadge}">${props.status.charAt(0).toUpperCase() + props.status.slice(1)}</span>
+                    ${props.is_makeup ? '<span class="badge bg-warning text-dark ms-1">Makeup</span>' : ''}
+                </div>
+                <table class="table table-sm table-borderless">
+                    <tr>
+                        <td class="text-muted">Cairo Time</td>
+                        <td class="fw-semibold">
+                            ${props.cairo_start} – ${props.cairo_end}
+                            <span class="badge bg-secondary ms-1" style="font-size:10px">Cairo</span>
+                        </td>
+                    </tr>
+                    ${timezoneRow}
                     <tr><td class="text-muted">Duration</td><td>${props.duration} min</td></tr>
+                    ${props.country ? `<tr><td class="text-muted">Country</td><td>${props.flag} ${props.country}</td></tr>` : ''}
                 </table>`;
             document.getElementById('modal-view-btn').href = `/sessions/${props.session_id}/`;
             new bootstrap.Modal(document.getElementById('sessionModal')).show();
-        },
-        loading: function(isLoading) {
-            // optional loading state
         }
     });
     calendar.render();
@@ -128,9 +153,10 @@ document.addEventListener('DOMContentLoaded', function() {
 
 function findSlot() {
     const duration = document.getElementById('suggest-duration').value;
-    const from = document.getElementById('suggest-from').value;
+    const from     = document.getElementById('suggest-from').value;
     let url = `/api/suggest-slot/?duration=${duration}`;
-    if (from) url += `&from=${from}`;
+    if (from) url += `&from=${encodeURIComponent(from)}`;
+
     fetch(url)
         .then(r => r.json())
         .then(data => {
@@ -139,13 +165,11 @@ function findSlot() {
             if (data.error) {
                 div.innerHTML = `<div class="alert alert-danger">${data.error}</div>`;
             } else {
-                const startD = new Date(data.start);
-                const endD = new Date(data.end);
                 div.innerHTML = `
                     <div class="alert alert-success">
                         <i class="fas fa-check-circle me-2"></i>
                         <strong>Available slot found:</strong><br>
-                        ${startD.toLocaleString('en-GB',{dateStyle:'full',timeStyle:'short'})} → ${endD.toLocaleTimeString('en-GB',{hour:'2-digit',minute:'2-digit'})}
+                        ${data.display}
                     </div>
                     <a href="/sessions/create/?suggest=1" class="btn btn-primary w-100">
                         <i class="fas fa-calendar-plus me-2"></i>Book This Slot
@@ -153,8 +177,9 @@ function findSlot() {
             }
         })
         .catch(() => {
-            document.getElementById('suggest-result').innerHTML = '<div class="alert alert-danger">Failed to connect. Try again.</div>';
-            document.getElementById('suggest-result').style.display = 'block';
+            const div = document.getElementById('suggest-result');
+            div.style.display = 'block';
+            div.innerHTML = '<div class="alert alert-danger">Failed to connect. Try again.</div>';
         });
 }
 </script>
