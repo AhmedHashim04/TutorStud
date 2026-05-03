@@ -7,6 +7,8 @@ class Student(models.Model):
     name = models.CharField(max_length=200)
     phone = models.CharField(max_length=20, blank=True)
     notes = models.TextField(blank=True)
+    country = models.CharField(max_length=100, blank=True)
+    timezone = models.CharField(max_length=64, default='UTC')
     created_at = models.DateTimeField(auto_now_add=True)
     is_active = models.BooleanField(default=True)
 
