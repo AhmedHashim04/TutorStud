@@ -15,6 +15,7 @@ from django.shortcuts import render, redirect, get_object_or_404
 from django.contrib import messages
 from django.http import JsonResponse
 from django.utils import timezone
+from django.db import models
 from django.utils.translation import gettext as _
 
 from .models import Student, Subscription, Session, RecurringSchedule, WorkingHours, ExceptionDay, PrayerTime, DEFAULT_HOURLY_RATE
@@ -483,7 +484,7 @@ def exception_day_delete(request, pk):
 
 
 def prayer_times(request):
-    prayer_times_qs = PrayerTime.objects.all().order_by('name')
+    prayer_times_qs = PrayerTime.objects.all().order_by('date', 'adhan_time')
     if request.method == 'POST':
         form = PrayerTimeForm(request.POST)
         if form.is_valid():
@@ -505,14 +506,18 @@ def prayer_time_delete(request, pk):
 
 
 def reports(request):
+    totals = Session.objects.filter(status='completed').aggregate(total=models.Sum('earnings'))
     return render(request, 'scheduler/reports.html', {
         'students': Student.objects.filter(is_active=True).count(),
         'sessions': Session.objects.count(),
-        'earnings': Session.objects.filter(status='completed').aggregate(total=models.Sum('earnings'))['total'] or 0,
+        'earnings': totals['total'] or 0,
     })
 
 
 def analytics(request):
+    today = timezone.localdate()
+    start_date = today.replace(day=1)
+    end_date = today
     return render(request, 'scheduler/analytics.html', {
-        'occupancy': get_occupancy_rate(),
+        'occupancy': get_occupancy_rate(start_date, end_date),
     })
