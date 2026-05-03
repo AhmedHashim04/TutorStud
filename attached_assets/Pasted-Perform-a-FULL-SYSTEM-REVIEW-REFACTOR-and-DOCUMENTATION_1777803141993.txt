@@ -1,0 +1,236 @@
+Perform a FULL SYSTEM REVIEW, REFACTOR, and DOCUMENTATION pass on the existing Django tutor management system.
+
+Your role is to act as:
+
+* Senior Backend Engineer
+* QA Engineer
+* Product Reviewer
+
+---
+
+## PHASE 1: UNDERSTAND THE SYSTEM
+
+* Analyze the entire codebase:
+
+  * models
+  * views
+  * templates
+  * services (especially scheduling logic)
+
+* Build a mental model of:
+
+  * how scheduling works
+  * how timezones are handled
+  * how prayer time blocking is implemented
+  * how working hours & exceptions behave
+  * how financial calculations work
+
+* Identify inconsistencies between:
+
+  * intended logic vs actual implementation
+
+---
+
+## PHASE 2: FIND & FIX ISSUES
+
+Carefully review and fix:
+
+### Scheduling Issues
+
+* Any possibility of overlapping sessions
+* Incorrect time calculations
+* Weak validation logic
+
+### Timezone Issues
+
+* Ensure ALL datetimes are:
+  → stored in UTC
+  → displayed correctly per user
+
+* Fix any naive datetime usage
+
+### Prayer Time Logic
+
+* Verify:
+
+  * Allowed: Adhan → +10 min
+  * Blocked: +10 → +25 min
+
+* Ensure correct timezone usage (Cairo)
+
+### Working Hours & Exceptions
+
+* Ensure:
+
+  * no booking outside working hours
+  * exceptions override everything
+
+### Make-up Sessions
+
+* Ensure:
+
+  * properly linked to original session
+  * rules enforced correctly
+
+### Financial Logic
+
+* Ensure:
+
+  * cancelled sessions are NOT counted
+  * earnings calculations are correct
+
+### UI Issues
+
+* Fix:
+
+  * unclear time displays
+  * missing timezone indicators
+  * confusing flows
+
+---
+
+## PHASE 3: REFACTOR & IMPROVE
+
+* Improve code quality:
+
+  * remove duplication
+  * clean structure
+  * move logic into service layer
+
+* Ensure:
+
+  * reusable scheduling engine
+  * centralized time handling utilities
+
+* Add:
+
+  * meaningful comments where needed
+
+---
+
+## PHASE 4: VALIDATION & TESTING
+
+* Run all existing tests
+
+* Fix failing tests
+
+* Add missing tests for:
+
+  * scheduling
+  * timezone conversion
+  * prayer blocking
+  * edge cases
+
+* Ensure:
+  → ALL tests pass
+
+---
+
+## PHASE 5: CREATE PROFESSIONAL README
+
+Generate a COMPLETE README.md for client delivery.
+
+### It MUST include:
+
+#### 1. Project Overview (NON-TECHNICAL)
+
+* What the system does
+* Who it is for
+
+#### 2. Key Features (CLEAR)
+
+Explain in simple language:
+
+* Smart scheduling
+* Timezone support (international students)
+* Prayer-aware scheduling
+* Working hours & exceptions
+* Make-up sessions
+* Reports & analytics
+
+#### 3. How It Works (STEP-BY-STEP)
+
+Example workflow:
+
+* Add student (with timezone)
+* Create subscription
+* Schedule session
+* View dual timezone display
+* Handle cancellation / reschedule
+
+#### 4. UI Walkthrough
+
+Describe each page:
+
+* Dashboard
+* Calendar
+* Student management
+* Reports
+* Analytics
+
+#### 5. Business Rules (IMPORTANT)
+
+Clearly explain:
+
+* No overlapping sessions
+* Prayer time blocking rules
+* Timezone handling
+* Cancellation & make-up rules
+
+#### 6. Installation (Developer Section)
+
+* clone repo
+* create virtualenv
+* install requirements
+* migrate
+* run server
+
+#### 7. Configuration
+
+* timezone (Africa/Cairo)
+* prayer times setup
+
+#### 8. Running Tests
+
+* commands to run tests
+
+#### 9. Sample Data
+
+* example usage
+
+---
+
+## PHASE 6: FINAL QUALITY CHECK
+
+* Ensure system is:
+
+  * stable
+  * consistent
+  * user-friendly
+
+* Verify:
+
+  * no logical contradictions
+  * no broken flows
+  * no edge-case failures
+
+---
+
+## DELIVERABLES
+
+* Refactored and fixed codebase
+* All tests passing
+* Professional README.md
+* Summary of:
+
+  * issues found
+  * fixes applied
+
+---
+
+## IMPORTANT NOTES
+
+* Do NOT assume correctness → verify everything
+* Focus on real-world usage scenarios
+* README must be client-ready (not just technical)
+* Prioritize reliability over shortcuts
