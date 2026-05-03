@@ -15,6 +15,7 @@ from django.shortcuts import render, redirect, get_object_or_404
 from django.contrib import messages
 from django.http import JsonResponse
 from django.utils import timezone
+from django.utils.translation import gettext as _
 
 from .models import Student, Subscription, Session, RecurringSchedule, WorkingHours, ExceptionDay, PrayerTime, DEFAULT_HOURLY_RATE
 from .forms import (
@@ -57,8 +58,6 @@ def _session_tz_payload(session):
     }
 
 
-# ─── Dashboard ───────────────────────────────────────────────────────────────
-
 def dashboard(request):
     today = timezone.localdate()
     now = timezone.now()
@@ -67,29 +66,12 @@ def dashboard(request):
     today_earnings = sum(s.earnings for s in today_sessions.filter(status='completed'))
     week_start = today - timedelta(days=today.weekday())
     week_end = week_start + timedelta(days=6)
-    week_earnings = sum(s.earnings for s in Session.objects.filter(
-        start_time__date__gte=week_start, start_time__date__lte=week_end, status='completed'
-    ).select_related('student'))
+    week_earnings = sum(s.earnings for s in Session.objects.filter(start_time__date__gte=week_start, start_time__date__lte=week_end, status='completed').select_related('student'))
     total_students = Student.objects.filter(is_active=True).count()
     scheduled_today = list(today_sessions.filter(status='scheduled'))
-    conflicts = [
-        (s1, s2) for i, s1 in enumerate(scheduled_today)
-        for s2 in scheduled_today[i + 1:]
-        if s1.start_time < s2.end_time and s2.start_time < s1.end_time
-    ]
-    return render(request, 'scheduler/dashboard.html', {
-        'today': today,
-        'today_sessions': today_sessions,
-        'upcoming': upcoming,
-        'today_earnings': today_earnings,
-        'week_earnings': week_earnings,
-        'total_students': total_students,
-        'total_sessions_today': today_sessions.count(),
-        'conflicts': conflicts,
-    })
+    conflicts = [(s1, s2) for i, s1 in enumerate(scheduled_today) for s2 in scheduled_today[i + 1:] if s1.start_time < s2.end_time and s2.start_time < s1.end_time]
+    return render(request, 'scheduler/dashboard.html', {'today': today, 'today_sessions': today_sessions, 'upcoming': upcoming, 'today_earnings': today_earnings, 'week_earnings': week_earnings, 'total_students': total_students, 'total_sessions_today': today_sessions.count(), 'conflicts': conflicts})
 
-
-# ─── Students ────────────────────────────────────────────────────────────────
 
 def student_list(request):
     students = Student.objects.prefetch_related('subscriptions').all().order_by('name')
@@ -105,17 +87,12 @@ def student_create(request):
             sub = sub_form.save(commit=False)
             sub.student = student
             sub.save()
-            messages.success(request, f"Student '{student.name}' created successfully.")
+            messages.success(request, _('Student %(name)s created successfully.') % {'name': student.name})
             return redirect('scheduler:student_detail', pk=student.pk)
     else:
         form = StudentForm(initial={'timezone': 'Africa/Cairo'})
         sub_form = SubscriptionForm()
-    return render(request, 'scheduler/student_form.html', {
-        'form': form,
-        'sub_form': sub_form,
-        'title': 'Add New Student',
-        'country_timezone_map_json': json.dumps(COUNTRY_TIMEZONE_MAP),
-    })
+    return render(request, 'scheduler/student_form.html', {'form': form, 'sub_form': sub_form, 'title': _('Add New Student'), 'country_timezone_map_json': json.dumps(COUNTRY_TIMEZONE_MAP)})
 
 
 def student_detail(request, pk):
@@ -128,14 +105,7 @@ def student_detail(request, pk):
         tz_label = f"{student.timezone} (UTC{tz_offset[:3]}:{tz_offset[3:]})"
     except Exception:
         tz_label = student.timezone or 'UTC'
-    return render(request, 'scheduler/student_detail.html', {
-        'student': student,
-        'sessions': sessions,
-        'subscription': student.active_subscription,
-        'schedules': schedules,
-        'tz_label': tz_label,
-        'flag': COUNTRY_FLAGS.get(student.country, '🌍'),
-    })
+    return render(request, 'scheduler/student_detail.html', {'student': student, 'sessions': sessions, 'subscription': student.active_subscription, 'schedules': schedules, 'tz_label': tz_label, 'flag': COUNTRY_FLAGS.get(student.country, '🌍')})
 
 
 def student_edit(request, pk):
@@ -144,28 +114,21 @@ def student_edit(request, pk):
         form = StudentForm(request.POST, instance=student)
         if form.is_valid():
             form.save()
-            messages.success(request, 'Student updated.')
+            messages.success(request, _('Student updated.'))
             return redirect('scheduler:student_detail', pk=student.pk)
     else:
         form = StudentForm(instance=student)
-    return render(request, 'scheduler/student_form.html', {
-        'form': form,
-        'title': f'Edit {student.name}',
-        'student': student,
-        'country_timezone_map_json': json.dumps(COUNTRY_TIMEZONE_MAP),
-    })
+    return render(request, 'scheduler/student_form.html', {'form': form, 'title': _('Edit %(name)s') % {'name': student.name}, 'student': student, 'country_timezone_map_json': json.dumps(COUNTRY_TIMEZONE_MAP)})
 
 
 def student_delete(request, pk):
     student = get_object_or_404(Student, pk=pk)
     if request.method == 'POST':
         student.delete()
-        messages.success(request, 'Student deleted.')
+        messages.success(request, _('Student deleted.'))
         return redirect('scheduler:student_list')
-    return render(request, 'scheduler/confirm_delete.html', {'object': student, 'object_type': 'Student'})
+    return render(request, 'scheduler/confirm_delete.html', {'object': student, 'object_type': _('Student')})
 
-
-# ─── Subscriptions ────────────────────────────────────────────────────────────
 
 def subscription_edit(request, student_pk):
     student = get_object_or_404(Student, pk=student_pk)
@@ -181,71 +144,40 @@ def subscription_edit(request, student_pk):
                 new_sub.pk = None
             new_sub.is_active = True
             new_sub.save()
-            messages.success(request, 'Subscription updated.')
+            messages.success(request, _('Subscription updated.'))
             return redirect('scheduler:student_detail', pk=student.pk)
     else:
         form = SubscriptionForm(instance=sub)
-    return render(request, 'scheduler/subscription_form.html', {
-        'form': form,
-        'student': student,
-        'default_hourly_rate': DEFAULT_HOURLY_RATE,
-    })
+    return render(request, 'scheduler/subscription_form.html', {'form': form, 'student': student, 'default_hourly_rate': DEFAULT_HOURLY_RATE})
 
-
-# ─── Recurring Schedules ─────────────────────────────────────────────────────
 
 def recurring_schedule_create(request, student_pk):
     student = get_object_or_404(Student, pk=student_pk)
     subscription = student.active_subscription
     preview = None
-
     if request.method == 'POST':
         action = request.POST.get('action', 'save')
         form = RecurringScheduleForm(request.POST, student=student)
-
         if form.is_valid():
             if action == 'preview':
-                # Build a temporary (unsaved) schedule object for previewing
-                temp = RecurringSchedule(
-                    student=student,
-                    subscription=subscription,
-                    day_of_week=form.cleaned_data['day_of_week'],
-                    start_time=form.cleaned_data['start_time'],
-                    duration=form.cleaned_data['duration'],
-                    is_active=form.cleaned_data['is_active'],
-                )
+                temp = RecurringSchedule(student=student, subscription=subscription, day_of_week=form.cleaned_data['day_of_week'], start_time=form.cleaned_data['start_time'], duration=form.cleaned_data['duration'], is_active=form.cleaned_data['is_active'])
                 weeks = form.cleaned_data.get('weeks_to_generate', 4)
                 preview = preview_sessions_from_schedule(temp, weeks=weeks)
-                return render(request, 'scheduler/recurring_schedule_form.html', {
-                    'form': form,
-                    'student': student,
-                    'subscription': subscription,
-                    'preview': preview,
-                    'title': 'Add Recurring Schedule',
-                })
-            else:
-                # Save the schedule
-                schedule = form.save(commit=False)
-                schedule.student = student
-                schedule.subscription = subscription
-                schedule.save()
-                weeks = form.cleaned_data.get('weeks_to_generate', 4)
-                created, skipped = generate_sessions_from_schedule(schedule, weeks=weeks)
-                msg = f"Recurring schedule saved. {created} session(s) generated."
-                if skipped:
-                    msg += f" {len(skipped)} slot(s) skipped due to conflicts."
-                messages.success(request, msg)
-                return redirect('scheduler:student_detail', pk=student.pk)
+                return render(request, 'scheduler/recurring_schedule_form.html', {'form': form, 'student': student, 'subscription': subscription, 'preview': preview, 'title': _('Add Recurring Schedule')})
+            schedule = form.save(commit=False)
+            schedule.student = student
+            schedule.subscription = subscription
+            schedule.save()
+            weeks = form.cleaned_data.get('weeks_to_generate', 4)
+            created, skipped = generate_sessions_from_schedule(schedule, weeks=weeks)
+            msg = _('Recurring schedule saved. %(count)s session(s) generated.') % {'count': created}
+            if skipped:
+                msg += ' ' + _('%(count)s slot(s) skipped due to conflicts.') % {'count': len(skipped)}
+            messages.success(request, msg)
+            return redirect('scheduler:student_detail', pk=student.pk)
     else:
         form = RecurringScheduleForm(student=student)
-
-    return render(request, 'scheduler/recurring_schedule_form.html', {
-        'form': form,
-        'student': student,
-        'subscription': subscription,
-        'preview': preview,
-        'title': 'Add Recurring Schedule',
-    })
+    return render(request, 'scheduler/recurring_schedule_form.html', {'form': form, 'student': student, 'subscription': subscription, 'preview': preview, 'title': _('Add Recurring Schedule')})
 
 
 def recurring_schedule_edit(request, pk):
@@ -253,55 +185,30 @@ def recurring_schedule_edit(request, pk):
     student = schedule.student
     subscription = student.active_subscription
     preview = None
-
     if request.method == 'POST':
         action = request.POST.get('action', 'save')
         form = RecurringScheduleForm(request.POST, instance=schedule, student=student)
-
         if form.is_valid():
             if action == 'preview':
-                temp = RecurringSchedule(
-                    student=student,
-                    subscription=subscription,
-                    day_of_week=form.cleaned_data['day_of_week'],
-                    start_time=form.cleaned_data['start_time'],
-                    duration=form.cleaned_data['duration'],
-                    is_active=form.cleaned_data['is_active'],
-                )
+                temp = RecurringSchedule(student=student, subscription=subscription, day_of_week=form.cleaned_data['day_of_week'], start_time=form.cleaned_data['start_time'], duration=form.cleaned_data['duration'], is_active=form.cleaned_data['is_active'])
                 weeks = form.cleaned_data.get('weeks_to_generate', 4)
                 preview = preview_sessions_from_schedule(temp, weeks=weeks)
-                return render(request, 'scheduler/recurring_schedule_form.html', {
-                    'form': form,
-                    'student': student,
-                    'subscription': subscription,
-                    'schedule': schedule,
-                    'preview': preview,
-                    'title': f'Edit Schedule',
-                })
+                return render(request, 'scheduler/recurring_schedule_form.html', {'form': form, 'student': student, 'subscription': subscription, 'schedule': schedule, 'preview': preview, 'title': _('Edit Schedule')})
+            regenerate = request.POST.get('regenerate') == '1'
+            form.save()
+            if regenerate:
+                weeks = form.cleaned_data.get('weeks_to_generate', 4)
+                created, skipped = regenerate_schedule(schedule, weeks=weeks)
+                msg = _('Schedule updated and regenerated. %(count)s session(s) created.') % {'count': created}
+                if skipped:
+                    msg += ' ' + _('%(count)s slot(s) skipped.') % {'count': len(skipped)}
+                messages.success(request, msg)
             else:
-                regenerate = request.POST.get('regenerate') == '1'
-                form.save()
-                if regenerate:
-                    weeks = form.cleaned_data.get('weeks_to_generate', 4)
-                    created, skipped = regenerate_schedule(schedule, weeks=weeks)
-                    msg = f"Schedule updated and regenerated. {created} session(s) created."
-                    if skipped:
-                        msg += f" {len(skipped)} slot(s) skipped."
-                    messages.success(request, msg)
-                else:
-                    messages.success(request, 'Schedule updated (existing sessions unchanged).')
-                return redirect('scheduler:student_detail', pk=student.pk)
+                messages.success(request, _('Schedule updated (existing sessions unchanged).'))
+            return redirect('scheduler:student_detail', pk=student.pk)
     else:
         form = RecurringScheduleForm(instance=schedule, student=student)
-
-    return render(request, 'scheduler/recurring_schedule_form.html', {
-        'form': form,
-        'student': student,
-        'subscription': subscription,
-        'schedule': schedule,
-        'preview': preview,
-        'title': 'Edit Recurring Schedule',
-    })
+    return render(request, 'scheduler/recurring_schedule_form.html', {'form': form, 'student': student, 'subscription': subscription, 'schedule': schedule, 'preview': preview, 'title': _('Edit Recurring Schedule')})
 
 
 def recurring_schedule_delete(request, pk):
@@ -310,41 +217,31 @@ def recurring_schedule_delete(request, pk):
     if request.method == 'POST':
         delete_future = request.POST.get('delete_future') == '1'
         if delete_future:
-            deleted_count, _ = delete_future_recurring_sessions(schedule)
+            delete_future_recurring_sessions(schedule)
         schedule.is_active = False
         schedule.save()
-        msg = 'Recurring schedule deactivated.'
+        msg = _('Recurring schedule deactivated.')
         if delete_future:
-            msg += ' Future sessions deleted.'
+            msg += ' ' + _('Future sessions deleted.')
         messages.success(request, msg)
         return redirect('scheduler:student_detail', pk=student.pk)
-    future_count = Session.objects.filter(
-        recurring_schedule=schedule, status='scheduled',
-        is_override=False, start_time__gt=timezone.now()
-    ).count()
-    return render(request, 'scheduler/recurring_schedule_confirm_delete.html', {
-        'schedule': schedule,
-        'future_count': future_count,
-    })
+    future_count = Session.objects.filter(recurring_schedule=schedule, status='scheduled', is_override=False, start_time__gt=timezone.now()).count()
+    return render(request, 'scheduler/recurring_schedule_confirm_delete.html', {'schedule': schedule, 'future_count': future_count})
 
 
 def recurring_schedule_generate(request, pk):
-    """Manually trigger session generation for an existing schedule."""
     schedule = get_object_or_404(RecurringSchedule, pk=pk)
     if request.method == 'POST':
         weeks = int(request.POST.get('weeks', 4))
         created, skipped = generate_sessions_from_schedule(schedule, weeks=weeks)
-        msg = f"{created} session(s) generated."
+        msg = _('%(count)s session(s) generated.') % {'count': created}
         if skipped:
-            msg += f" {len(skipped)} slot(s) skipped."
+            msg += ' ' + _('%(count)s slot(s) skipped.') % {'count': len(skipped)}
         messages.success(request, msg)
     return redirect('scheduler:student_detail', pk=schedule.student.pk)
 
 
-# ─── API: Preview schedule ───────────────────────────────────────────────────
-
 def api_preview_schedule(request):
-    """Return a JSON preview of sessions for a proposed recurring schedule."""
     try:
         day_of_week = int(request.GET.get('day_of_week', 6))
         start_time_str = request.GET.get('start_time', '17:00')
@@ -354,33 +251,14 @@ def api_preview_schedule(request):
         h, m = map(int, start_time_str.split(':'))
         start_time = dt_time(h, m)
     except (ValueError, TypeError):
-        return JsonResponse({'error': 'Invalid parameters'}, status=400)
-
-    temp = RecurringSchedule(
-        student_id=None,
-        day_of_week=day_of_week,
-        start_time=start_time,
-        duration=duration,
-    )
+        return JsonResponse({'error': _('Invalid parameters')}, status=400)
+    temp = RecurringSchedule(student_id=None, day_of_week=day_of_week, start_time=start_time, duration=duration)
     preview = preview_sessions_from_schedule(temp, weeks=weeks)
-    return JsonResponse([{
-        'date': p['date'].strftime('%Y-%m-%d'),
-        'weekday': p['date'].strftime('%A'),
-        'start': p['start_dt'].strftime('%H:%M'),
-        'end': p['end_dt'].strftime('%H:%M'),
-        'valid': p['valid'],
-        'already_exists': p['already_exists'],
-        'errors': p['errors'],
-    } for p in preview], safe=False)
+    return JsonResponse([{'date': p['date'].strftime('%Y-%m-%d'), 'weekday': p['date'].strftime('%A'), 'start': p['start_dt'].strftime('%H:%M'), 'end': p['end_dt'].strftime('%H:%M'), 'valid': p['valid'], 'already_exists': p['already_exists'], 'errors': p['errors']} for p in preview], safe=False)
 
-
-# ─── Calendar ────────────────────────────────────────────────────────────────
 
 def calendar_view(request):
-    return render(request, 'scheduler/calendar.html', {
-        'students': Student.objects.filter(is_active=True),
-        'suggest_form': QuickSessionForm(),
-    })
+    return render(request, 'scheduler/calendar.html', {'students': Student.objects.filter(is_active=True), 'suggest_form': QuickSessionForm()})
 
 
 def api_sessions(request):
@@ -391,13 +269,7 @@ def api_sessions(request):
         qs = qs.filter(end_time__gte=start)
     if end:
         qs = qs.filter(start_time__lte=end)
-
-    STATUS_COLORS = {
-        'scheduled': '#3b82f6',
-        'completed': '#10b981',
-        'cancelled': '#ef4444',
-        'missed': '#f59e0b',
-    }
+    STATUS_COLORS = {'scheduled': '#3b82f6', 'completed': '#10b981', 'cancelled': '#ef4444', 'missed': '#f59e0b'}
     events = []
     for s in qs:
         payload = _session_tz_payload(s)
@@ -408,36 +280,9 @@ def api_sessions(request):
             title += ' [Makeup]'
         if s.is_override:
             title += ' ✏️'
-
-        # Overridden sessions get a distinct purple border
         color = STATUS_COLORS.get(s.status, '#6366f1')
         border_color = '#7c3aed' if s.is_override else color
-
-        events.append({
-            'id': s.pk,
-            'title': title,
-            'start': s.start_time.isoformat(),
-            'end': s.end_time.isoformat(),
-            'color': color,
-            'borderColor': border_color,
-            'extendedProps': {
-                'status': s.status,
-                'student': s.student.name,
-                'country': s.student.country or '',
-                'flag': payload['flag'],
-                'duration': s.duration_minutes,
-                'is_makeup': s.is_makeup,
-                'is_override': s.is_override,
-                'is_recurring': bool(s.recurring_schedule_id),
-                'session_id': s.pk,
-                'cairo_start': payload['cairo_start'].strftime('%H:%M'),
-                'cairo_end': payload['cairo_end'].strftime('%H:%M'),
-                'student_start': payload['student_start'].strftime('%H:%M'),
-                'student_end': payload['student_end'].strftime('%H:%M'),
-                'student_tz': payload['student_tz'],
-                'same_tz': payload['same_tz'],
-            },
-        })
+        events.append({'id': s.pk, 'title': title, 'start': s.start_time.isoformat(), 'end': s.end_time.isoformat(), 'color': color, 'borderColor': border_color, 'extendedProps': {'status': s.status, 'student': s.student.name, 'country': s.student.country or '', 'flag': payload['flag'], 'duration': s.duration_minutes, 'is_makeup': s.is_makeup, 'is_override': s.is_override, 'is_recurring': bool(s.recurring_schedule_id), 'session_id': s.pk, 'cairo_start': payload['cairo_start'].strftime('%H:%M'), 'cairo_end': payload['cairo_end'].strftime('%H:%M'), 'student_start': payload['student_start'].strftime('%H:%M'), 'student_end': payload['student_end'].strftime('%H:%M'), 'student_tz': payload['student_tz'], 'same_tz': payload['same_tz']}})
     return JsonResponse(events, safe=False)
 
 
@@ -455,15 +300,9 @@ def api_suggest_slot(request):
     slot = suggest_next_slot(duration, from_dt=from_dt)
     if slot:
         end = slot + timedelta(minutes=duration)
-        return JsonResponse({
-            'start': slot.strftime('%Y-%m-%dT%H:%M'),
-            'end': end.strftime('%Y-%m-%dT%H:%M'),
-            'display': f"{slot.strftime('%A, %B %-d · %H:%M')} – {end.strftime('%H:%M')} (Cairo)",
-        })
-    return JsonResponse({'error': 'No available slot found in the next 14 days.'}, status=404)
+        return JsonResponse({'start': slot.strftime('%Y-%m-%dT%H:%M'), 'end': end.strftime('%Y-%m-%dT%H:%M'), 'display': f"{slot.strftime('%A, %B %-d · %H:%M')} – {end.strftime('%H:%M')} (Cairo)"})
+    return JsonResponse({'error': _('No available slot found in the next 14 days.')}, status=404)
 
-
-# ─── Sessions ────────────────────────────────────────────────────────────────
 
 def session_list(request):
     sessions = Session.objects.select_related('student', 'recurring_schedule').order_by('-start_time')
@@ -473,12 +312,7 @@ def session_list(request):
         sessions = sessions.filter(status=status_filter)
     if student_filter:
         sessions = sessions.filter(student_id=student_filter)
-    return render(request, 'scheduler/session_list.html', {
-        'sessions': sessions[:50],
-        'students': Student.objects.filter(is_active=True).order_by('name'),
-        'status_filter': status_filter,
-        'student_filter': student_filter,
-    })
+    return render(request, 'scheduler/session_list.html', {'sessions': sessions[:50], 'students': Student.objects.filter(is_active=True).order_by('name'), 'status_filter': status_filter, 'student_filter': student_filter})
 
 
 def session_create(request):
@@ -496,12 +330,8 @@ def session_create(request):
                 for e in errors:
                     messages.error(request, e)
             else:
-                Session.objects.create(
-                    student=student, start_time=start_dt, end_time=end_dt,
-                    is_recurring=form.cleaned_data.get('is_recurring', False),
-                    notes=form.cleaned_data.get('notes', ''),
-                )
-                messages.success(request, f"Session created for {student.name}.")
+                Session.objects.create(student=student, start_time=start_dt, end_time=end_dt, is_recurring=form.cleaned_data.get('is_recurring', False), notes=form.cleaned_data.get('notes', ''))
+                messages.success(request, _('Session created for %(name)s.') % {'name': student.name})
                 return redirect('scheduler:calendar')
     else:
         initial = {}
@@ -511,16 +341,12 @@ def session_create(request):
                 initial['date'] = slot.date()
                 initial['start_time'] = slot.time()
         form = QuickSessionForm(initial=initial)
-    return render(request, 'scheduler/session_form.html', {'form': form, 'title': 'New Session'})
+    return render(request, 'scheduler/session_form.html', {'form': form, 'title': _('New Session')})
 
 
 def session_detail(request, pk):
     session = get_object_or_404(Session, pk=pk)
-    return render(request, 'scheduler/session_detail.html', {
-        'session': session,
-        'status_form': SessionStatusForm(instance=session),
-        'display': _session_tz_payload(session),
-    })
+    return render(request, 'scheduler/session_detail.html', {'session': session, 'status_form': SessionStatusForm(instance=session), 'display': _session_tz_payload(session)})
 
 
 def session_edit(request, pk):
@@ -536,254 +362,20 @@ def session_edit(request, pk):
                 for e in errors:
                     messages.error(request, e)
             else:
-                # Mark as override if it belongs to a recurring schedule
                 if session.recurring_schedule_id:
                     s.is_override = True
                 s.save()
-                messages.success(request, 'Session updated.')
+                messages.success(request, _('Session updated.'))
                 return redirect('scheduler:session_detail', pk=session.pk)
     else:
         form = SessionForm(instance=session)
-    return render(request, 'scheduler/session_form.html', {
-        'form': form, 'title': 'Edit Session', 'session': session,
-    })
+    return render(request, 'scheduler/session_form.html', {'form': form, 'title': _('Edit Session'), 'session': session})
 
 
 def session_delete(request, pk):
     session = get_object_or_404(Session, pk=pk)
     if request.method == 'POST':
         session.delete()
-        messages.success(request, 'Session deleted.')
+        messages.success(request, _('Session deleted.'))
         return redirect('scheduler:session_list')
-    return render(request, 'scheduler/confirm_delete.html', {
-        'object': session, 'object_type': 'Session',
-    })
-
-
-def session_status_update(request, pk):
-    session = get_object_or_404(Session, pk=pk)
-    if request.method == 'POST':
-        form = SessionStatusForm(request.POST, instance=session)
-        if form.is_valid():
-            form.save()
-            messages.success(request, f"Status updated to '{session.get_status_display()}'.")
-    return redirect('scheduler:session_detail', pk=pk)
-
-
-def session_reschedule(request, pk):
-    session = get_object_or_404(Session, pk=pk)
-    if request.method == 'POST':
-        new_start, new_end = quick_reschedule(session)
-        if new_start:
-            session.start_time = new_start
-            session.end_time = new_end
-            # Mark as override if it originated from a recurring schedule
-            if session.recurring_schedule_id:
-                session.is_override = True
-            session.save()
-            messages.success(request, f"Session rescheduled to {new_start.strftime('%A, %B %-d at %H:%M')} (Cairo).")
-        else:
-            messages.error(request, 'No available slot found in the next 14 days.')
-    return redirect('scheduler:session_detail', pk=pk)
-
-
-def session_makeup(request, pk):
-    original = get_object_or_404(Session, pk=pk)
-    if request.method == 'POST':
-        form = QuickSessionForm(request.POST)
-        if form.is_valid():
-            d = form.cleaned_data['date']
-            t = form.cleaned_data['start_time']
-            duration = int(form.cleaned_data['duration'])
-            student = form.cleaned_data['student']
-            start_dt = make_aware_cairo(d, t)
-            end_dt = start_dt + timedelta(minutes=duration)
-            errors = validate_makeup_session(original, start_dt, end_dt)
-            if errors:
-                for e in errors:
-                    messages.error(request, e)
-            else:
-                Session.objects.create(
-                    student=student, start_time=start_dt, end_time=end_dt,
-                    is_makeup=True, original_session=original,
-                    notes=f"Makeup for session on {to_cairo(original.start_time).strftime('%B %-d, %Y')}",
-                )
-                original.status = 'missed'
-                original.save()
-                messages.success(request, 'Make-up session created successfully.')
-                return redirect('scheduler:session_detail', pk=original.pk)
-    else:
-        sub = original.student.active_subscription
-        form = QuickSessionForm(initial={
-            'student': original.student,
-            'duration': sub.session_duration if sub else 60,
-        })
-    return render(request, 'scheduler/session_makeup.html', {'form': form, 'original': original})
-
-
-# ─── Working Hours & Exceptions ──────────────────────────────────────────────
-
-def working_hours(request):
-    from .models import WEEKDAYS
-    instances = {wh.weekday: wh for wh in WorkingHours.objects.all()}
-    if request.method == 'POST':
-        for weekday, _ in WEEKDAYS:
-            wh = instances.get(weekday)
-            prefix = f'day_{weekday}'
-            is_working = request.POST.get(f'{prefix}_is_working') == 'on'
-            start = request.POST.get(f'{prefix}_start')
-            end = request.POST.get(f'{prefix}_end')
-            if start and end:
-                if wh:
-                    wh.is_working = is_working
-                    wh.start_time = start
-                    wh.end_time = end
-                    wh.save()
-                else:
-                    WorkingHours.objects.create(weekday=weekday, start_time=start, end_time=end, is_working=is_working)
-        messages.success(request, 'Working hours updated.')
-        return redirect('scheduler:working_hours')
-    days = [{'weekday': weekday, 'name': name, 'wh': instances.get(weekday)} for weekday, name in WEEKDAYS]
-    return render(request, 'scheduler/working_hours.html', {'days': days})
-
-
-def exception_days(request):
-    exceptions = ExceptionDay.objects.all().order_by('date')
-    form = ExceptionDayForm()
-    if request.method == 'POST':
-        form = ExceptionDayForm(request.POST)
-        if form.is_valid():
-            form.save()
-            messages.success(request, 'Exception day added.')
-            return redirect('scheduler:exception_days')
-    return render(request, 'scheduler/exception_days.html', {'form': form, 'exceptions': exceptions})
-
-
-def exception_day_delete(request, pk):
-    exc = get_object_or_404(ExceptionDay, pk=pk)
-    if request.method == 'POST':
-        exc.delete()
-        messages.success(request, 'Exception day removed.')
-    return redirect('scheduler:exception_days')
-
-
-def prayer_times(request):
-    prayers = PrayerTime.objects.order_by('-date', 'adhan_time')[:30]
-    form = PrayerTimeForm()
-    if request.method == 'POST':
-        form = PrayerTimeForm(request.POST)
-        if form.is_valid():
-            form.save()
-            messages.success(request, 'Prayer time saved.')
-            return redirect('scheduler:prayer_times')
-    return render(request, 'scheduler/prayer_times.html', {'form': form, 'prayers': prayers})
-
-
-def prayer_time_delete(request, pk):
-    pt = get_object_or_404(PrayerTime, pk=pk)
-    if request.method == 'POST':
-        pt.delete()
-        messages.success(request, 'Prayer time deleted.')
-    return redirect('scheduler:prayer_times')
-
-
-# ─── Reports & Analytics ─────────────────────────────────────────────────────
-
-def reports(request):
-    today = timezone.localdate()
-    form = DateRangeForm(request.GET or None)
-    start_date = today.replace(day=1)
-    end_date = today
-    student_filter = None
-    if form.is_valid():
-        start_date = form.cleaned_data.get('start_date') or start_date
-        end_date = form.cleaned_data.get('end_date') or end_date
-        student_filter = form.cleaned_data.get('student')
-    sessions_qs = Session.objects.filter(
-        start_time__date__gte=start_date, start_time__date__lte=end_date
-    ).select_related('student')
-    if student_filter:
-        sessions_qs = sessions_qs.filter(student=student_filter)
-    completed = sessions_qs.filter(status='completed')
-    cancelled = sessions_qs.filter(status='cancelled')
-    missed = sessions_qs.filter(status='missed')
-    total_income = sum(s.earnings for s in completed)
-    student_breakdown = []
-    for student in Student.objects.filter(is_active=True).order_by('name'):
-        qs = completed.filter(student=student)
-        count = qs.count()
-        if count > 0:
-            income = sum(s.earnings for s in qs)
-            student_breakdown.append({
-                'student': student, 'sessions': count, 'income': income,
-                'flag': COUNTRY_FLAGS.get(student.country, '🌍'),
-            })
-    student_breakdown.sort(key=lambda x: x['income'], reverse=True)
-    daily_data = {}
-    for s in completed:
-        day = to_cairo(s.start_time).strftime('%Y-%m-%d')
-        daily_data[day] = float(daily_data.get(day, 0)) + float(s.earnings)
-    occupancy = get_occupancy_rate(start_date, end_date)
-    return render(request, 'scheduler/reports.html', {
-        'form': form, 'start_date': start_date, 'end_date': end_date,
-        'total_income': total_income,
-        'completed_count': completed.count(),
-        'cancelled_count': cancelled.count(),
-        'missed_count': missed.count(),
-        'total_sessions': sessions_qs.count(),
-        'student_breakdown': student_breakdown,
-        'daily_data_json': json.dumps(daily_data),
-        'occupancy': occupancy,
-    })
-
-
-def analytics(request):
-    today = timezone.localdate()
-    thirty_days_ago = today - timedelta(days=30)
-    sessions = Session.objects.filter(start_time__date__gte=thirty_days_ago).select_related('student')
-    completed = sessions.filter(status='completed')
-    total = sessions.count()
-    cancellation_rate = round(sessions.filter(status='cancelled').count() / total * 100, 1) if total else 0
-    student_stats = []
-    for student in Student.objects.filter(is_active=True):
-        stu_sessions = sessions.filter(student=student)
-        total_s = stu_sessions.count()
-        if total_s == 0:
-            continue
-        completed_s = stu_sessions.filter(status='completed').count()
-        cancelled_s = stu_sessions.filter(status='cancelled').count()
-        student_stats.append({
-            'student': student, 'total': total_s,
-            'completed': completed_s, 'cancelled': cancelled_s,
-            'rate': round(completed_s / total_s * 100, 1),
-            'flag': COUNTRY_FLAGS.get(student.country, '🌍'),
-        })
-    student_stats.sort(key=lambda x: x['rate'], reverse=True)
-    hour_data = {}
-    for s in completed:
-        hour = to_cairo(s.start_time).hour
-        hour_data[hour] = hour_data.get(hour, 0) + 1
-    weekly_data = {}
-    for i in range(7, -1, -1):
-        week_start = today - timedelta(days=today.weekday() + 7 * i)
-        week_end = week_start + timedelta(days=6)
-        label = week_start.strftime('%b %-d')
-        weekly_data[label] = Session.objects.filter(
-            start_time__date__gte=week_start, start_time__date__lte=week_end, status='completed'
-        ).count()
-    occupancy = get_occupancy_rate(thirty_days_ago, today)
-    status_dist = {
-        'Completed': completed.count(),
-        'Cancelled': sessions.filter(status='cancelled').count(),
-        'Missed': sessions.filter(status='missed').count(),
-        'Scheduled': sessions.filter(status='scheduled').count(),
-    }
-    return render(request, 'scheduler/analytics.html', {
-        'cancellation_rate': cancellation_rate, 'occupancy': occupancy,
-        'student_stats': student_stats[:10],
-        'hour_data_json': json.dumps(hour_data),
-        'weekly_data_json': json.dumps(weekly_data),
-        'status_dist_json': json.dumps(status_dist),
-        'total_sessions': total,
-        'completed_sessions': completed.count(),
-    })
+    return render(request, 'scheduler/confirm_delete.html', {'object': session, 'object_type': _('Session')})

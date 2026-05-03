@@ -1,18 +1,19 @@
 from django.db import models
 from django.utils import timezone
+from django.utils.translation import gettext_lazy as _
 from decimal import Decimal
 
 
 DEFAULT_HOURLY_RATE = Decimal('200')
 
 WEEKDAYS = [
-    (0, 'Monday'),
-    (1, 'Tuesday'),
-    (2, 'Wednesday'),
-    (3, 'Thursday'),
-    (4, 'Friday'),
-    (5, 'Saturday'),
-    (6, 'Sunday'),
+    (0, _('Monday')),
+    (1, _('Tuesday')),
+    (2, _('Wednesday')),
+    (3, _('Thursday')),
+    (4, _('Friday')),
+    (5, _('Saturday')),
+    (6, _('Sunday')),
 ]
 
 
@@ -49,8 +50,8 @@ class Student(models.Model):
 
 class Subscription(models.Model):
     DURATION_CHOICES = [
-        (30, '30 minutes'),
-        (60, '60 minutes'),
+        (30, _('30 minutes')),
+        (60, _('60 minutes')),
     ]
 
     student = models.ForeignKey(Student, on_delete=models.CASCADE, related_name='subscriptions')
@@ -78,26 +79,11 @@ class Subscription(models.Model):
 
 
 class RecurringSchedule(models.Model):
-    """
-    Defines a repeating weekly slot for a student.
-    e.g. "Every Sunday at 17:00 for 60 minutes".
-    Actual Session records are generated from this pattern.
-    """
-    DURATION_CHOICES = [
-        (30, '30 minutes'),
-        (45, '45 minutes'),
-        (60, '60 minutes'),
-        (90, '90 minutes'),
-    ]
-
     student = models.ForeignKey(Student, on_delete=models.CASCADE, related_name='recurring_schedules')
-    subscription = models.ForeignKey(
-        Subscription, on_delete=models.SET_NULL, null=True, blank=True,
-        related_name='recurring_schedules'
-    )
+    subscription = models.ForeignKey(Subscription, on_delete=models.SET_NULL, null=True, blank=True, related_name='recurring_schedules')
     day_of_week = models.IntegerField(choices=WEEKDAYS)
-    start_time = models.TimeField(help_text='Cairo time (Africa/Cairo)')
-    duration = models.IntegerField(choices=DURATION_CHOICES, default=60, help_text='Duration in minutes')
+    start_time = models.TimeField(help_text=_('Cairo time (Africa/Cairo)'))
+    duration = models.IntegerField(choices=[(30, _('30 minutes')), (45, _('45 minutes')), (60, _('60 minutes')), (90, _('90 minutes'))], default=60, help_text=_('Duration in minutes'))
     is_active = models.BooleanField(default=True)
     created_at = models.DateTimeField(auto_now_add=True)
 
@@ -140,11 +126,11 @@ class ExceptionDay(models.Model):
 
 class PrayerTime(models.Model):
     PRAYER_CHOICES = [
-        ('fajr', 'Fajr'),
-        ('dhuhr', 'Dhuhr'),
-        ('asr', 'Asr'),
-        ('maghrib', 'Maghrib'),
-        ('isha', 'Isha'),
+        ('fajr', _('Fajr')),
+        ('dhuhr', _('Dhuhr')),
+        ('asr', _('Asr')),
+        ('maghrib', _('Maghrib')),
+        ('isha', _('Isha')),
     ]
 
     date = models.DateField()
@@ -161,10 +147,10 @@ class PrayerTime(models.Model):
 
 class Session(models.Model):
     STATUS_CHOICES = [
-        ('scheduled', 'Scheduled'),
-        ('completed', 'Completed'),
-        ('cancelled', 'Cancelled'),
-        ('missed', 'Missed'),
+        ('scheduled', _('Scheduled')),
+        ('completed', _('Completed')),
+        ('cancelled', _('Cancelled')),
+        ('missed', _('Missed')),
     ]
 
     student = models.ForeignKey(Student, on_delete=models.CASCADE, related_name='sessions')
@@ -172,18 +158,9 @@ class Session(models.Model):
     end_time = models.DateTimeField()
     status = models.CharField(max_length=20, choices=STATUS_CHOICES, default='scheduled')
     is_makeup = models.BooleanField(default=False)
-    original_session = models.ForeignKey(
-        'self', on_delete=models.SET_NULL, null=True, blank=True, related_name='makeup_sessions'
-    )
-    # Recurring schedule linkage
-    recurring_schedule = models.ForeignKey(
-        RecurringSchedule, on_delete=models.SET_NULL, null=True, blank=True,
-        related_name='sessions', help_text='The recurring pattern this session was generated from.'
-    )
-    is_override = models.BooleanField(
-        default=False,
-        help_text='True when this session has been individually modified from its recurring pattern.'
-    )
+    original_session = models.ForeignKey('self', on_delete=models.SET_NULL, null=True, blank=True, related_name='makeup_sessions')
+    recurring_schedule = models.ForeignKey(RecurringSchedule, on_delete=models.SET_NULL, null=True, blank=True, related_name='sessions', help_text=_('The recurring pattern this session was generated from.'))
+    is_override = models.BooleanField(default=False, help_text=_('True when this session has been individually modified from its recurring pattern.'))
     is_recurring = models.BooleanField(default=False)
     notes = models.TextField(blank=True)
     created_at = models.DateTimeField(auto_now_add=True)
