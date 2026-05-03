@@ -2,6 +2,35 @@
 {% block title %}Schedule Make-up{% endblock %}
 {% block page_title %}Make-up Session{% endblock %}
 
+{% block extra_css %}
+<style>
+.form-shell .form-control,
+.form-shell .form-select,
+.form-shell textarea,
+.form-shell input[type="date"],
+.form-shell input[type="time"],
+.form-shell input[type="datetime-local"],
+.form-shell input[type="number"] {
+    width: 100%;
+    min-height: 48px;
+    padding: 12px 14px;
+    border-radius: 12px;
+    border: 1px solid var(--border);
+    background: var(--surface);
+    color: var(--text);
+    box-shadow: inset 0 1px 2px rgba(15, 23, 42, .03);
+}
+.form-shell .field-card {
+    background: linear-gradient(180deg, rgba(255,255,255,.92), rgba(248,250,252,.96));
+    border: 1px solid var(--border);
+    border-radius: 16px;
+    padding: 18px;
+    margin-bottom: 14px;
+}
+.form-shell .field-help { font-size: 12px; color: var(--text-muted); margin-top: 6px; }
+</style>
+{% endblock %}
+
 {% block content %}
 <div class="page-header">
     <div>
@@ -15,7 +44,6 @@
 
 <div class="row g-4">
     <div class="col-lg-6">
-        <!-- Original session info -->
         <div class="card mb-3">
             <div class="card-header"><i class="fas fa-history me-2 text-amber"></i>Original Session</div>
             <div class="card-body">
@@ -34,14 +62,15 @@
     <div class="col-lg-6">
         <div class="card">
             <div class="card-header"><i class="fas fa-redo me-2 text-success"></i>New Make-up Slot</div>
-            <div class="card-body">
+            <div class="card-body form-shell">
                 <form method="post">
                     {% csrf_token %}
                     {% for field in form %}
-                    <div class="mb-3">
+                    <div class="field-card">
                         <label class="form-label">{{ field.label }}</label>
                         {{ field }}
-                        {% if field.errors %}<div class="text-danger mt-1" style="font-size:13px">{{ field.errors.0 }}</div>{% endif %}
+                        {% if field.help_text %}<div class="field-help">{{ field.help_text }}</div>{% endif %}
+                        {% if field.errors %}<div class="text-danger mt-2" style="font-size:13px">{{ field.errors.0 }}</div>{% endif %}
                     </div>
                     {% endfor %}
                     <button type="submit" class="btn btn-success w-100">

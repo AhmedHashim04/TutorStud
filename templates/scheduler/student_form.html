@@ -2,6 +2,52 @@
 {% block title %}{{ title }}{% endblock %}
 {% block page_title %}{{ title }}{% endblock %}
 
+{% block extra_css %}
+<style>
+.form-shell .form-control,
+.form-shell .form-select,
+.form-shell textarea,
+.form-shell input[type="date"],
+.form-shell input[type="time"],
+.form-shell input[type="datetime-local"],
+.form-shell input[type="number"] {
+    width: 100%;
+    min-height: 48px;
+    padding: 12px 14px;
+    border-radius: 12px;
+    border: 1px solid var(--border);
+    background: var(--surface);
+    color: var(--text);
+    box-shadow: inset 0 1px 2px rgba(15, 23, 42, .03);
+}
+.form-shell .form-control:focus,
+.form-shell .form-select:focus,
+.form-shell textarea:focus,
+.form-shell input:focus {
+    border-color: var(--primary);
+    box-shadow: 0 0 0 4px rgba(99, 102, 241, .12);
+}
+.form-shell textarea {
+    resize: vertical;
+}
+.form-shell .field-grid {
+    display: grid;
+    gap: 14px;
+}
+.form-shell .field-card {
+    background: linear-gradient(180deg, rgba(255,255,255,.92), rgba(248,250,252,.96));
+    border: 1px solid var(--border);
+    border-radius: 16px;
+    padding: 18px;
+}
+.form-shell .field-help {
+    font-size: 12px;
+    color: var(--text-muted);
+    margin-top: 6px;
+}
+</style>
+{% endblock %}
+
 {% block content %}
 <div class="page-header">
     <div>
@@ -13,22 +59,24 @@
     </a>
 </div>
 
-<form method="post" class="row g-4">
+<form method="post" class="row g-4 form-shell">
     {% csrf_token %}
     <div class="col-lg-6">
         <div class="card h-100">
             <div class="card-header"><i class="fas fa-user me-2 text-primary"></i>Student Information</div>
             <div class="card-body">
-                {% for field in form %}
-                <div class="mb-3">
-                    <label class="form-label" for="{{ field.id_for_label }}">{{ field.label }}</label>
-                    {{ field }}
-                    {% if field.help_text %}<div class="form-text">{{ field.help_text }}</div>{% endif %}
-                    {% if field.errors %}<div class="text-danger mt-1" style="font-size:13px">{{ field.errors.0 }}</div>{% endif %}
+                <div class="field-grid">
+                    {% for field in form %}
+                    <div class="field-card">
+                        <label class="form-label" for="{{ field.id_for_label }}">{{ field.label }}</label>
+                        {{ field }}
+                        {% if field.help_text %}<div class="field-help">{{ field.help_text }}</div>{% endif %}
+                        {% if field.errors %}<div class="text-danger mt-2" style="font-size:13px">{{ field.errors.0 }}</div>{% endif %}
+                    </div>
+                    {% endfor %}
                 </div>
-                {% endfor %}
                 {% if not sub_form %}
-                <button type="submit" class="btn btn-primary w-100">
+                <button type="submit" class="btn btn-primary w-100 mt-4">
                     <i class="fas fa-save me-2"></i>Save Changes
                 </button>
                 {% endif %}
@@ -41,16 +89,18 @@
         <div class="card h-100">
             <div class="card-header"><i class="fas fa-tags me-2 text-purple"></i>Subscription Details</div>
             <div class="card-body">
-                {% for field in sub_form %}
-                <div class="mb-3">
-                    <label class="form-label" for="{{ field.id_for_label }}">{{ field.label }}</label>
-                    {{ field }}
-                    {% if field.help_text %}<div class="form-text">{{ field.help_text }}</div>{% endif %}
-                    {% if field.errors %}<div class="text-danger mt-1" style="font-size:13px">{{ field.errors.0 }}</div>{% endif %}
+                <div class="field-grid">
+                    {% for field in sub_form %}
+                    <div class="field-card">
+                        <label class="form-label" for="{{ field.id_for_label }}">{{ field.label }}</label>
+                        {{ field }}
+                        {% if field.help_text %}<div class="field-help">{{ field.help_text }}</div>{% endif %}
+                        {% if field.errors %}<div class="text-danger mt-2" style="font-size:13px">{{ field.errors.0 }}</div>{% endif %}
+                    </div>
+                    {% endfor %}
                 </div>
-                {% endfor %}
-                <div id="earnings-preview" style="background:linear-gradient(135deg,var(--primary),var(--secondary));border-radius:10px;padding:16px;color:white;margin-bottom:16px;display:none">
-                    <div class="d-flex justify-content-between">
+                <div id="earnings-preview" class="mt-4" style="background:linear-gradient(135deg,var(--primary),var(--secondary));border-radius:16px;padding:16px;color:white;margin-bottom:16px;display:none">
+                    <div class="d-flex justify-content-between gap-3">
                         <div><div style="font-size:11px;opacity:.8">Weekly Earnings</div><div id="weekly-val" style="font-size:22px;font-weight:700">—</div></div>
                         <div style="text-align:right"><div style="font-size:11px;opacity:.8">Monthly Earnings</div><div id="monthly-val" style="font-size:22px;font-weight:700">—</div></div>
                     </div>
