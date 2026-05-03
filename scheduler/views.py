@@ -379,3 +379,140 @@ def session_delete(request, pk):
         messages.success(request, _('Session deleted.'))
         return redirect('scheduler:session_list')
     return render(request, 'scheduler/confirm_delete.html', {'object': session, 'object_type': _('Session')})
+
+
+def session_status_update(request, pk):
+    session = get_object_or_404(Session, pk=pk)
+    if request.method == 'POST':
+        form = SessionStatusForm(request.POST, instance=session)
+        if form.is_valid():
+            form.save()
+            messages.success(request, _('Session status updated.'))
+        else:
+            for error in form.errors.values():
+                for item in error:
+                    messages.error(request, item)
+    return redirect('scheduler:session_detail', pk=session.pk)
+
+
+def session_reschedule(request, pk):
+    session = get_object_or_404(Session, pk=pk)
+    if request.method == 'POST':
+        form = SessionForm(request.POST, instance=session)
+        if form.is_valid():
+            s = form.save(commit=False)
+            s.start_time = ensure_aware(s.start_time)
+            s.end_time = ensure_aware(s.end_time)
+            errors = validate_session(s.start_time, s.end_time, exclude_session_id=session.pk)
+            if errors:
+                for e in errors:
+                    messages.error(request, e)
+            else:
+                if session.recurring_schedule_id:
+                    s.is_override = True
+                s.save()
+                messages.success(request, _('Session rescheduled.'))
+                return redirect('scheduler:session_detail', pk=session.pk)
+    else:
+        form = SessionForm(instance=session)
+    return render(request, 'scheduler/session_form.html', {'form': form, 'title': _('Reschedule Session'), 'session': session})
+
+
+def session_makeup(request, pk):
+    session = get_object_or_404(Session, pk=pk)
+    if request.method == 'POST':
+        form = QuickSessionForm(request.POST)
+        if form.is_valid():
+            d = form.cleaned_data['date']
+            t = form.cleaned_data['start_time']
+            duration = int(form.cleaned_data['duration'])
+            start_dt = make_aware_cairo(d, t)
+            end_dt = start_dt + timedelta(minutes=duration)
+            errors = validate_makeup_session(start_dt, end_dt, student=session.student)
+            if errors:
+                for e in errors:
+                    messages.error(request, e)
+            else:
+                Session.objects.create(
+                    student=session.student,
+                    start_time=start_dt,
+                    end_time=end_dt,
+                    is_makeup=True,
+                    notes=form.cleaned_data.get('notes', ''),
+                )
+                messages.success(request, _('Makeup session created.'))
+                return redirect('scheduler:session_list')
+    else:
+        form = QuickSessionForm(initial={'student': session.student})
+    return render(request, 'scheduler/session_form.html', {'form': form, 'title': _('Makeup Session'), 'session': session})
+
+
+def working_hours(request):
+    hours = WorkingHours.objects.all().order_by('day_of_week')
+    if request.method == 'POST':
+        form = WorkingHoursForm(request.POST)
+        if form.is_valid():
+            form.save()
+            messages.success(request, _('Working hours saved.'))
+            return redirect('scheduler:working_hours')
+    else:
+        form = WorkingHoursForm()
+    return render(request, 'scheduler/working_hours.html', {'hours': hours, 'form': form})
+
+
+def exception_days(request):
+    exceptions = ExceptionDay.objects.all().order_by('-date')
+    if request.method == 'POST':
+        form = ExceptionDayForm(request.POST)
+        if form.is_valid():
+            form.save()
+            messages.success(request, _('Exception day added.'))
+            return redirect('scheduler:exception_days')
+    else:
+        form = ExceptionDayForm()
+    return render(request, 'scheduler/exception_days.html', {'exceptions': exceptions, 'form': form})
+
+
+def exception_day_delete(request, pk):
+    exception_day = get_object_or_404(ExceptionDay, pk=pk)
+    if request.method == 'POST':
+        exception_day.delete()
+        messages.success(request, _('Exception day deleted.'))
+        return redirect('scheduler:exception_days')
+    return render(request, 'scheduler/confirm_delete.html', {'object': exception_day, 'object_type': _('Exception Day')})
+
+
+def prayer_times(request):
+    prayer_times_qs = PrayerTime.objects.all().order_by('name')
+    if request.method == 'POST':
+        form = PrayerTimeForm(request.POST)
+        if form.is_valid():
+            form.save()
+            messages.success(request, _('Prayer time saved.'))
+            return redirect('scheduler:prayer_times')
+    else:
+        form = PrayerTimeForm()
+    return render(request, 'scheduler/prayer_times.html', {'prayer_times': prayer_times_qs, 'form': form})
+
+
+def prayer_time_delete(request, pk):
+    prayer_time = get_object_or_404(PrayerTime, pk=pk)
+    if request.method == 'POST':
+        prayer_time.delete()
+        messages.success(request, _('Prayer time deleted.'))
+        return redirect('scheduler:prayer_times')
+    return render(request, 'scheduler/confirm_delete.html', {'object': prayer_time, 'object_type': _('Prayer Time')})
+
+
+def reports(request):
+    return render(request, 'scheduler/reports.html', {
+        'students': Student.objects.filter(is_active=True).count(),
+        'sessions': Session.objects.count(),
+        'earnings': Session.objects.filter(status='completed').aggregate(total=models.Sum('earnings'))['total'] or 0,
+    })
+
+
+def analytics(request):
+    return render(request, 'scheduler/analytics.html', {
+        'occupancy': get_occupancy_rate(),
+    })
