@@ -1,0 +1,220 @@
+Enhance and refactor the scheduling system in the Django tutor management application to properly support recurring weekly schedules with per-session overrides.
+
+---
+
+## CORE CONCEPT
+
+The system must support TWO modes of scheduling:
+
+1. Recurring Weekly Schedule (default)
+2. Individual Session Override (exceptions per session)
+
+---
+
+1. RECURRING WEEKLY SCHEDULE (PRIMARY FLOW)
+
+---
+
+When creating a subscription:
+
+* The tutor defines:
+
+  * number of sessions per week (e.g. 3)
+  * specific days + times
+
+Example:
+
+* Sunday → 5:00 PM
+* Tuesday → 6:00 PM
+* Thursday → 5:30 PM
+
+System must:
+
+* Automatically generate future sessions based on this pattern
+* Generate sessions for a configurable period:
+  → e.g. next 4 weeks or 1 month
+
+---
+
+2. SESSION GENERATION LOGIC
+
+---
+
+* Recurring schedule creates actual Session records
+
+* Each session has:
+
+  * start_time
+  * end_time
+  * status
+
+* Ensure:
+
+  * no overlap during generation
+  * respect:
+
+    * working hours
+    * prayer time blocking
+    * timezone handling
+
+---
+
+3. PER-SESSION OVERRIDE (IMPORTANT)
+
+---
+
+Tutor can modify a SINGLE session without affecting the whole schedule:
+
+Actions allowed:
+
+* Reschedule one session (change date/time)
+* Cancel one session
+* Mark as make-up session
+
+Rules:
+
+* Changes apply ONLY to that session
+* Original recurring pattern remains unchanged
+
+---
+
+4. RESCHEDULING LOGIC
+
+---
+
+When rescheduling a session:
+
+* System must:
+
+  * suggest nearest valid available slot
+  * respect:
+
+    * no overlap
+    * working hours
+    * prayer blocking
+    * timezone
+
+---
+
+5. DATA MODEL CHANGES
+
+---
+
+Introduce:
+
+### RecurringSchedule (NEW)
+
+* student
+* day_of_week
+* start_time
+* duration
+* active (boolean)
+
+### Session (UPDATED)
+
+* student
+* start_time
+* end_time
+* status
+* is_override (boolean)
+* original_schedule (FK to RecurringSchedule, nullable)
+
+---
+
+6. UI/UX FLOW
+
+---
+
+When creating subscription:
+
+Step 1:
+
+* select number of sessions per week
+
+Step 2:
+
+* pick days + times using UI picker
+
+Step 3:
+
+* preview generated schedule (IMPORTANT)
+
+---
+
+Calendar behavior:
+
+* Show:
+
+  * recurring sessions
+  * overridden sessions clearly
+
+Example:
+
+* Normal session → default color
+* Modified session → highlighted
+
+---
+
+7. EDGE CASES (CRITICAL)
+
+---
+
+Handle:
+
+* Overlap during generation
+* Changing subscription after sessions created
+* Deleting recurring schedule
+* Timezone differences
+* DST changes
+
+---
+
+8. INTEGRATION WITH EXISTING SYSTEM
+
+---
+
+Ensure compatibility with:
+
+* Prayer time blocking
+* Working hours
+* Exceptions (days off)
+* Multi-timezone display
+* Financial reports
+* Make-up sessions
+
+---
+
+9. VALIDATION RULES
+
+---
+
+* No overlapping sessions EVER
+* No booking in blocked prayer intervals
+* No booking outside working hours
+
+---
+
+10. OPTIONAL IMPROVEMENTS
+
+---
+
+* Auto-regenerate future sessions when schedule changes
+* Limit how far sessions are generated (rolling window)
+
+---
+
+## DELIVERABLES
+
+* Refactored scheduling system
+* Recurring schedule implementation
+* Session override logic
+* Updated models
+* Clean UI flow for scheduling
+
+---
+
+## IMPORTANT NOTES
+
+* DO NOT use naive scheduling logic
+* Keep recurring logic separate from actual sessions
+* Ensure system remains predictable and easy to use
