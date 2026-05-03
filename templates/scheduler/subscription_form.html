@@ -15,28 +15,26 @@
 
 <div class="row g-4">
     <div class="col-lg-6">
-        <div class="card">
+        <div class="card h-100">
             <div class="card-header"><i class="fas fa-tags me-2 text-purple"></i>Subscription Details</div>
             <div class="card-body">
                 <form method="post">
                     {% csrf_token %}
                     {% for field in form %}
                     <div class="mb-3">
-                        <label class="form-label">{{ field.label }}</label>
+                        <label class="form-label" for="{{ field.id_for_label }}">{{ field.label }}</label>
                         {{ field }}
+                        {% if field.help_text %}<div class="form-text">{{ field.help_text }}</div>{% endif %}
                         {% if field.errors %}<div class="text-danger mt-1" style="font-size:13px">{{ field.errors.0 }}</div>{% endif %}
                     </div>
                     {% endfor %}
+                    <div class="alert alert-info" style="font-size:13px">
+                        Default hourly rate for new subscriptions: <strong>{{ default_hourly_rate }} EGP/hr</strong>
+                    </div>
                     <div id="earnings-preview" style="background:linear-gradient(135deg,var(--primary),var(--secondary));border-radius:10px;padding:16px;color:white;margin-bottom:16px;display:none">
                         <div class="d-flex justify-content-between">
-                            <div>
-                                <div style="font-size:11px;opacity:.8">Weekly</div>
-                                <div id="weekly-val" style="font-size:20px;font-weight:700">—</div>
-                            </div>
-                            <div style="text-align:right">
-                                <div style="font-size:11px;opacity:.8">Monthly</div>
-                                <div id="monthly-val" style="font-size:20px;font-weight:700">—</div>
-                            </div>
+                            <div><div style="font-size:11px;opacity:.8">Weekly</div><div id="weekly-val" style="font-size:20px;font-weight:700">—</div></div>
+                            <div style="text-align:right"><div style="font-size:11px;opacity:.8">Monthly</div><div id="monthly-val" style="font-size:20px;font-weight:700">—</div></div>
                         </div>
                     </div>
                     <button type="submit" class="btn btn-primary w-100">
@@ -62,10 +60,7 @@ function calcEarnings() {
         document.getElementById('earnings-preview').style.display = 'block';
     }
 }
-document.querySelectorAll('[name=hourly_rate],[name=sessions_per_week],[name=session_duration]').forEach(el => {
-    el.addEventListener('input', calcEarnings);
-    el.addEventListener('change', calcEarnings);
-});
+document.querySelectorAll('[name=hourly_rate],[name=sessions_per_week],[name=session_duration]').forEach(el => { el.addEventListener('input', calcEarnings); el.addEventListener('change', calcEarnings); });
 calcEarnings();
 </script>
 {% endblock %}

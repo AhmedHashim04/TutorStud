@@ -3,6 +3,9 @@ from django.utils import timezone
 from decimal import Decimal
 
 
+DEFAULT_HOURLY_RATE = Decimal('200')
+
+
 class Student(models.Model):
     name = models.CharField(max_length=200)
     phone = models.CharField(max_length=20, blank=True)
@@ -43,7 +46,7 @@ class Subscription(models.Model):
     student = models.ForeignKey(Student, on_delete=models.CASCADE, related_name='subscriptions')
     sessions_per_week = models.PositiveIntegerField(default=3)
     session_duration = models.IntegerField(choices=DURATION_CHOICES, default=60)
-    hourly_rate = models.DecimalField(max_digits=10, decimal_places=2)
+    hourly_rate = models.DecimalField(max_digits=10, decimal_places=2, default=DEFAULT_HOURLY_RATE)
     is_active = models.BooleanField(default=True)
     start_date = models.DateField(default=timezone.localdate)
     created_at = models.DateTimeField(auto_now_add=True)

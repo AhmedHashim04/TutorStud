@@ -1,0 +1,172 @@
+Enhance the existing Django tutor management system by improving form UI/UX and refining business logic for country/timezone selection and pricing.
+
+---
+
+1. FORM UI/UX IMPROVEMENT (IMPORTANT)
+
+---
+
+Improve ALL forms in the system (especially "Add Student"):
+
+* Replace basic/default Django forms with modern styled forms
+
+* Ensure:
+
+  * clean layout
+  * proper spacing
+  * aligned labels and inputs
+  * responsive design
+
+* Use:
+
+  * card-based layout
+  * grouped fields
+  * clear section titles
+
+* Improve:
+
+  * buttons (primary / secondary styles)
+  * input fields (rounded, consistent)
+  * error messages (clear + styled)
+
+* Add:
+
+  * placeholders
+  * helper text where needed
+
+* Forms must feel:
+  → modern, clean, and professional
+
+---
+
+2. COUNTRY → TIMEZONE AUTO SELECTION
+
+---
+
+Enhance Student creation/edit form:
+
+* Replace free-text country with:
+  → dropdown list of countries
+
+* When a country is selected:
+  → automatically assign a default timezone
+
+Examples:
+
+* Egypt → Africa/Cairo
+* Germany → Europe/Berlin
+* USA → (allow selection OR default like America/New_York)
+
+Implementation:
+
+* Maintain mapping:
+  country → default timezone
+
+* Allow override:
+
+  * user can manually change timezone if needed
+
+* UI behavior:
+
+  * timezone field auto-updates when country changes
+  * show timezone clearly
+
+---
+
+3. HOURLY RATE BUSINESS LOGIC (CRITICAL)
+
+---
+
+Implement global + historical pricing logic:
+
+### Global Default Rate
+
+* Define a system-wide default hourly rate
+* Used when creating new subscriptions
+
+### Subscription-Level Rate Snapshot
+
+* Each subscription MUST store its own hourly rate
+
+### RULES:
+
+* When hourly rate is updated globally:
+  → ONLY affects NEW subscriptions
+
+* Existing subscriptions:
+  → MUST NOT change
+
+* Financial calculations:
+  → always use stored rate in subscription (not global value)
+
+---
+
+4. DATA CONSISTENCY (IMPORTANT)
+
+---
+
+Ensure:
+
+* No recalculation of past earnings due to rate change
+* Historical data remains accurate
+
+---
+
+5. VALIDATION & UX DETAILS
+
+---
+
+* Validate:
+
+  * country must be selected
+  * timezone must exist
+
+* Show:
+
+  * country flag or label (optional but recommended)
+
+* In UI:
+
+  * display:
+    student country + timezone clearly
+
+---
+
+6. INTEGRATION WITH EXISTING SYSTEM
+
+---
+
+Ensure compatibility with:
+
+* Scheduling system (timezone-aware)
+* Multi-timezone display
+* Reports & analytics
+* Bilingual support (all labels translatable)
+
+---
+
+7. OPTIONAL (NICE TO HAVE)
+
+---
+
+* Searchable country dropdown
+* Auto-detect timezone based on browser (fallback)
+* Tooltip explaining timezone differences
+
+---
+
+## DELIVERABLES
+
+* Improved forms (modern UI)
+* Country dropdown + timezone auto-selection
+* Correct pricing logic (global + snapshot)
+* No regression in existing features
+
+---
+
+## IMPORTANT NOTES
+
+* Do NOT break existing data
+* Do NOT use hardcoded UI
+* Ensure everything works with translations (Arabic/English)
+* Keep UX simple and clear
