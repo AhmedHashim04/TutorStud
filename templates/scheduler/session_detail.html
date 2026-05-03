@@ -1,0 +1,132 @@
+{% extends "base.html" %}
+{% block title %}Session Detail{% endblock %}
+{% block page_title %}Session{% endblock %}
+
+{% block content %}
+<div class="page-header">
+    <div>
+        <h1>{{ session.student.name }}</h1>
+        <p>{{ session.start_time|date:"l, F j, Y · H:i" }} – {{ session.end_time|date:"H:i" }}</p>
+    </div>
+    <div class="d-flex gap-2">
+        <a href="{% url 'scheduler:session_edit' session.pk %}" class="btn btn-outline-primary btn-sm">
+            <i class="fas fa-edit me-1"></i>Edit
+        </a>
+        <a href="{% url 'scheduler:session_delete' session.pk %}" class="btn btn-outline-danger btn-sm">
+            <i class="fas fa-trash me-1"></i>Delete
+        </a>
+    </div>
+</div>
+
+<div class="row g-4">
+    <div class="col-lg-5">
+        <!-- Session Info -->
+        <div class="card mb-3">
+            <div class="card-header"><i class="fas fa-info-circle me-2 text-primary"></i>Session Info</div>
+            <div class="card-body">
+                <table class="table table-sm table-borderless">
+                    <tr><td class="text-muted" style="width:40%">Student</td><td class="fw-semibold"><a href="{% url 'scheduler:student_detail' session.student.pk %}">{{ session.student.name }}</a></td></tr>
+                    <tr><td class="text-muted">Date</td><td class="fw-semibold">{{ session.start_time|date:"F j, Y" }}</td></tr>
+                    <tr><td class="text-muted">Time</td><td class="fw-semibold">{{ session.start_time|date:"H:i" }} – {{ session.end_time|date:"H:i" }}</td></tr>
+                    <tr><td class="text-muted">Duration</td><td class="fw-semibold">{{ session.duration_minutes }} minutes</td></tr>
+                    <tr><td class="text-muted">Status</td><td><span class="badge badge-{{ session.status }}">{{ session.get_status_display }}</span></td></tr>
+                    <tr><td class="text-muted">Type</td><td>
+                        {% if session.is_makeup %}
+                        <span class="badge bg-warning text-dark">Makeup Session</span>
+                        {% elif session.is_recurring %}
+                        <span class="badge bg-info text-dark">Recurring</span>
+                        {% else %}
+                        <span class="badge bg-secondary">One-time</span>
+                        {% endif %}
+                    </td></tr>
+                    {% if session.status == "completed" %}
+                    <tr><td class="text-muted">Earnings</td><td class="fw-semibold text-success">{{ session.earnings|floatformat:0 }} EGP</td></tr>
+                    {% endif %}
+                </table>
+                {% if session.notes %}
+                <hr>
+                <div class="text-muted" style="font-size:13px"><i class="fas fa-sticky-note me-1"></i> {{ session.notes }}</div>
+                {% endif %}
+            </div>
+        </div>
+
+        <!-- Makeup link -->
+        {% if session.original_session %}
+        <div class="card mb-3">
+            <div class="card-header"><i class="fas fa-link me-2 text-amber"></i>Original Session</div>
+            <div class="card-body">
+                <a href="{% url 'scheduler:session_detail' session.original_session.pk %}" class="text-decoration-none">
+                    {{ session.original_session.student.name }} — {{ session.original_session.start_time|date:"M j, Y H:i" }}
+                </a>
+            </div>
+        </div>
+        {% endif %}
+
+        {% for makeup in session.makeup_sessions.all %}
+        {% if forloop.first %}
+        <div class="card mb-3">
+            <div class="card-header"><i class="fas fa-redo me-2 text-success"></i>Makeup Sessions</div>
+            <div class="card-body">
+        {% endif %}
+                <a href="{% url 'scheduler:session_detail' makeup.pk %}" class="text-decoration-none d-block">
+                    {{ makeup.start_time|date:"M j, Y H:i" }} — <span class="badge badge-{{ makeup.status }}">{{ makeup.get_status_display }}</span>
+                </a>
+        {% if forloop.last %}
+            </div>
+        </div>
+        {% endif %}
+        {% endfor %}
+    </div>
+
+    <div class="col-lg-7">
+        <!-- Update status -->
+        <div class="card mb-3">
+            <div class="card-header"><i class="fas fa-toggle-on me-2 text-success"></i>Update Status</div>
+            <div class="card-body">
+                <form method="post" action="{% url 'scheduler:session_status' session.pk %}">
+                    {% csrf_token %}
+                    <div class="row g-3">
+                        <div class="col-sm-6">
+                            <label class="form-label">Status</label>
+                            {{ status_form.status }}
+                        </div>
+                        <div class="col-sm-6">
+                            <label class="form-label">Notes</label>
+                            {{ status_form.notes }}
+                        </div>
+                    </div>
+                    <button type="submit" class="btn btn-success btn-sm mt-3">
+                        <i class="fas fa-check me-1"></i>Update Status
+                    </button>
+                </form>
+            </div>
+        </div>
+
+        <!-- Actions -->
+        <div class="card">
+            <div class="card-header"><i class="fas fa-bolt me-2 text-amber"></i>Quick Actions</div>
+            <div class="card-body d-grid gap-2">
+                <!-- Reschedule -->
+                <form method="post" action="{% url 'scheduler:session_reschedule' session.pk %}">
+                    {% csrf_token %}
+                    <button type="submit" class="btn btn-outline-primary w-100"
+                        onclick="return confirm('Automatically reschedule to the next available slot?')">
+                        <i class="fas fa-forward me-2"></i>Quick Reschedule (Auto-find Slot)
+                    </button>
+                </form>
+
+                <!-- Makeup -->
+                {% if session.status == "missed" %}
+                <a href="{% url 'scheduler:session_makeup' session.pk %}" class="btn btn-outline-warning">
+                    <i class="fas fa-redo me-2"></i>Schedule Make-up Session
+                </a>
+                {% endif %}
+
+                <a href="{% url 'scheduler:student_detail' session.student.pk %}" class="btn btn-outline-secondary">
+                    <i class="fas fa-user me-2"></i>View Student Profile
+                </a>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}

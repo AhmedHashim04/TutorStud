@@ -1,0 +1,161 @@
+{% extends "base.html" %}
+{% block title %}Calendar{% endblock %}
+{% block page_title %}Calendar{% endblock %}
+
+{% block extra_css %}
+<link href="https://cdn.jsdelivr.net/npm/fullcalendar@6.1.10/index.global.min.css" rel="stylesheet">
+{% endblock %}
+
+{% block content %}
+<div class="page-header">
+    <div>
+        <h1>Session Calendar</h1>
+        <p>View and manage all sessions visually</p>
+    </div>
+    <div class="d-flex gap-2">
+        <button class="btn btn-outline-secondary btn-sm" data-bs-toggle="modal" data-bs-target="#suggestModal">
+            <i class="fas fa-magic me-1"></i>Find Slot
+        </button>
+        <a href="{% url 'scheduler:session_create' %}" class="btn btn-primary btn-sm">
+            <i class="fas fa-plus me-1"></i>New Session
+        </a>
+    </div>
+</div>
+
+<!-- Legend -->
+<div class="d-flex gap-3 mb-3 flex-wrap">
+    <div class="d-flex align-items-center gap-2"><span style="width:14px;height:14px;border-radius:4px;background:#3b82f6;display:inline-block"></span><span style="font-size:13px">Scheduled</span></div>
+    <div class="d-flex align-items-center gap-2"><span style="width:14px;height:14px;border-radius:4px;background:#10b981;display:inline-block"></span><span style="font-size:13px">Completed</span></div>
+    <div class="d-flex align-items-center gap-2"><span style="width:14px;height:14px;border-radius:4px;background:#ef4444;display:inline-block"></span><span style="font-size:13px">Cancelled</span></div>
+    <div class="d-flex align-items-center gap-2"><span style="width:14px;height:14px;border-radius:4px;background:#f59e0b;display:inline-block"></span><span style="font-size:13px">Missed</span></div>
+</div>
+
+<div class="card">
+    <div class="card-body" style="min-height:600px">
+        <div id="calendar"></div>
+    </div>
+</div>
+
+<!-- Session detail modal -->
+<div class="modal fade" id="sessionModal" tabindex="-1">
+    <div class="modal-dialog">
+        <div class="modal-content" style="border-radius:12px;border:none">
+            <div class="modal-header border-0 pb-0">
+                <h5 class="modal-title fw-bold" id="modal-title">Session Details</h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+            </div>
+            <div class="modal-body">
+                <div id="modal-body"></div>
+            </div>
+            <div class="modal-footer border-0 pt-0">
+                <a id="modal-view-btn" href="#" class="btn btn-primary btn-sm">
+                    <i class="fas fa-eye me-1"></i>View Details
+                </a>
+                <button type="button" class="btn btn-outline-secondary btn-sm" data-bs-dismiss="modal">Close</button>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Suggest slot modal -->
+<div class="modal fade" id="suggestModal" tabindex="-1">
+    <div class="modal-dialog">
+        <div class="modal-content" style="border-radius:12px;border:none">
+            <div class="modal-header border-0 pb-0">
+                <h5 class="modal-title fw-bold"><i class="fas fa-magic me-2 text-primary"></i>Find Next Available Slot</h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+            </div>
+            <div class="modal-body">
+                <div class="mb-3">
+                    <label class="form-label">Session Duration</label>
+                    <select id="suggest-duration" class="form-select">
+                        <option value="30">30 minutes</option>
+                        <option value="60" selected>60 minutes</option>
+                    </select>
+                </div>
+                <div class="mb-3">
+                    <label class="form-label">Search from</label>
+                    <input type="datetime-local" id="suggest-from" class="form-control">
+                </div>
+                <button class="btn btn-primary w-100" onclick="findSlot()">
+                    <i class="fas fa-search me-2"></i>Find Slot
+                </button>
+                <div id="suggest-result" class="mt-3" style="display:none"></div>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block extra_js %}
+<script src="https://cdn.jsdelivr.net/npm/fullcalendar@6.1.10/index.global.min.js"></script>
+<script>
+document.addEventListener('DOMContentLoaded', function() {
+    const calendarEl = document.getElementById('calendar');
+    const calendar = new FullCalendar.Calendar(calendarEl, {
+        initialView: 'timeGridWeek',
+        headerToolbar: {
+            left: 'prev,next today',
+            center: 'title',
+            right: 'dayGridMonth,timeGridWeek,timeGridDay,listWeek'
+        },
+        slotMinTime: '06:00:00',
+        slotMaxTime: '23:00:00',
+        slotDuration: '00:30:00',
+        height: 'auto',
+        events: '/api/sessions/',
+        eventTimeFormat: { hour: '2-digit', minute: '2-digit', hour12: false },
+        eventClick: function(info) {
+            const props = info.event.extendedProps;
+            document.getElementById('modal-title').textContent = props.student;
+            document.getElementById('modal-body').innerHTML = `
+                <div class="mb-2"><span class="badge badge-${props.status}">${props.status.charAt(0).toUpperCase() + props.status.slice(1)}</span>${props.is_makeup ? ' <span class="badge badge-missed">Makeup</span>' : ''}</div>
+                <table class="table table-sm">
+                    <tr><td class="text-muted">Student</td><td class="fw-semibold">${props.student}</td></tr>
+                    <tr><td class="text-muted">Start</td><td>${info.event.start.toLocaleString('en-GB',{dateStyle:'medium',timeStyle:'short'})}</td></tr>
+                    <tr><td class="text-muted">End</td><td>${info.event.end.toLocaleString('en-GB',{dateStyle:'medium',timeStyle:'short'})}</td></tr>
+                    <tr><td class="text-muted">Duration</td><td>${props.duration} min</td></tr>
+                </table>`;
+            document.getElementById('modal-view-btn').href = `/sessions/${props.session_id}/`;
+            new bootstrap.Modal(document.getElementById('sessionModal')).show();
+        },
+        loading: function(isLoading) {
+            // optional loading state
+        }
+    });
+    calendar.render();
+});
+
+function findSlot() {
+    const duration = document.getElementById('suggest-duration').value;
+    const from = document.getElementById('suggest-from').value;
+    let url = `/api/suggest-slot/?duration=${duration}`;
+    if (from) url += `&from=${from}`;
+    fetch(url)
+        .then(r => r.json())
+        .then(data => {
+            const div = document.getElementById('suggest-result');
+            div.style.display = 'block';
+            if (data.error) {
+                div.innerHTML = `<div class="alert alert-danger">${data.error}</div>`;
+            } else {
+                const startD = new Date(data.start);
+                const endD = new Date(data.end);
+                div.innerHTML = `
+                    <div class="alert alert-success">
+                        <i class="fas fa-check-circle me-2"></i>
+                        <strong>Available slot found:</strong><br>
+                        ${startD.toLocaleString('en-GB',{dateStyle:'full',timeStyle:'short'})} → ${endD.toLocaleTimeString('en-GB',{hour:'2-digit',minute:'2-digit'})}
+                    </div>
+                    <a href="/sessions/create/?suggest=1" class="btn btn-primary w-100">
+                        <i class="fas fa-calendar-plus me-2"></i>Book This Slot
+                    </a>`;
+            }
+        })
+        .catch(() => {
+            document.getElementById('suggest-result').innerHTML = '<div class="alert alert-danger">Failed to connect. Try again.</div>';
+            document.getElementById('suggest-result').style.display = 'block';
+        });
+}
+</script>
+{% endblock %}

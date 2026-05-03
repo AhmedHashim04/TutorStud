@@ -1,0 +1,92 @@
+{% extends "base.html" %}
+{% block title %}Students{% endblock %}
+{% block page_title %}Students{% endblock %}
+
+{% block content %}
+<div class="page-header">
+    <div>
+        <h1>Students</h1>
+        <p>Manage your students and their subscriptions</p>
+    </div>
+    <a href="{% url 'scheduler:student_create' %}" class="btn btn-primary">
+        <i class="fas fa-user-plus me-2"></i>Add Student
+    </a>
+</div>
+
+{% if students %}
+<div class="row g-3">
+    {% for student in students %}
+    <div class="col-md-6 col-lg-4">
+        <div class="student-card">
+            <div class="d-flex align-items-center gap-3 mb-3">
+                <div class="student-avatar">{{ student.name|first|upper }}</div>
+                <div class="flex-1">
+                    <div class="fw-bold">{{ student.name }}</div>
+                    {% if student.phone %}<div class="text-muted" style="font-size:13px"><i class="fas fa-phone me-1"></i>{{ student.phone }}</div>{% endif %}
+                </div>
+                {% if not student.is_active %}<span class="badge bg-secondary">Inactive</span>{% endif %}
+            </div>
+            {% with sub=student.active_subscription %}
+            {% if sub %}
+            <div class="row g-2 mb-3">
+                <div class="col-6">
+                    <div style="background:#f8fafc;border-radius:8px;padding:10px;text-align:center">
+                        <div style="font-size:18px;font-weight:700;color:var(--primary)">{{ sub.sessions_per_week }}</div>
+                        <div style="font-size:11px;color:var(--text-muted)">sessions/week</div>
+                    </div>
+                </div>
+                <div class="col-6">
+                    <div style="background:#f8fafc;border-radius:8px;padding:10px;text-align:center">
+                        <div style="font-size:18px;font-weight:700;color:var(--success)">{{ sub.session_duration }}</div>
+                        <div style="font-size:11px;color:var(--text-muted)">min / session</div>
+                    </div>
+                </div>
+            </div>
+            <div style="background:linear-gradient(135deg,var(--primary),var(--secondary));border-radius:8px;padding:12px;color:white;margin-bottom:12px">
+                <div class="d-flex justify-content-between">
+                    <div>
+                        <div style="font-size:11px;opacity:.8">Weekly</div>
+                        <div style="font-weight:700">{{ sub.weekly_earnings|floatformat:0 }} EGP</div>
+                    </div>
+                    <div style="text-align:right">
+                        <div style="font-size:11px;opacity:.8">Monthly</div>
+                        <div style="font-weight:700">{{ sub.monthly_earnings|floatformat:0 }} EGP</div>
+                    </div>
+                </div>
+            </div>
+            {% else %}
+            <div class="alert alert-warning py-2" style="font-size:13px">
+                <i class="fas fa-exclamation-triangle me-1"></i>No active subscription
+            </div>
+            {% endif %}
+            {% endwith %}
+            <div class="d-flex gap-2">
+                <a href="{% url 'scheduler:student_detail' student.pk %}" class="btn btn-sm btn-outline-primary flex-1">
+                    <i class="fas fa-eye me-1"></i>View
+                </a>
+                <a href="{% url 'scheduler:student_edit' student.pk %}" class="btn btn-sm btn-outline-secondary">
+                    <i class="fas fa-edit"></i>
+                </a>
+                <a href="{% url 'scheduler:subscription_edit' student.pk %}" class="btn btn-sm btn-outline-secondary">
+                    <i class="fas fa-tags"></i>
+                </a>
+            </div>
+        </div>
+    </div>
+    {% endfor %}
+</div>
+{% else %}
+<div class="card">
+    <div class="card-body">
+        <div class="empty-state">
+            <i class="fas fa-user-graduate"></i>
+            <h5>No students yet</h5>
+            <p>Add your first student to get started.</p>
+            <a href="{% url 'scheduler:student_create' %}" class="btn btn-primary">
+                <i class="fas fa-user-plus me-2"></i>Add Student
+            </a>
+        </div>
+    </div>
+</div>
+{% endif %}
+{% endblock %}

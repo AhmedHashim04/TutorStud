@@ -1,0 +1,113 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>{% block title %}TutorSys{% endblock %} — Smart Tutor Management</title>
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/css/bootstrap.min.css" rel="stylesheet">
+    <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.0/css/all.min.css" rel="stylesheet">
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&display=swap" rel="stylesheet">
+    <link href="/static/css/main.css" rel="stylesheet">
+    {% block extra_css %}{% endblock %}
+</head>
+<body>
+
+<!-- Sidebar -->
+<div class="sidebar" id="sidebar">
+    <div class="sidebar-brand">
+        <div class="brand-icon"><i class="fas fa-graduation-cap"></i></div>
+        <span class="brand-text">TutorSys</span>
+    </div>
+    <nav class="sidebar-nav">
+        <a href="{% url 'scheduler:dashboard' %}" class="nav-item {% if request.resolver_match.url_name == 'dashboard' %}active{% endif %}">
+            <i class="fas fa-chart-pie"></i><span>Dashboard</span>
+        </a>
+        <a href="{% url 'scheduler:student_list' %}" class="nav-item {% if 'student' in request.resolver_match.url_name %}active{% endif %}">
+            <i class="fas fa-user-graduate"></i><span>Students</span>
+        </a>
+        <a href="{% url 'scheduler:calendar' %}" class="nav-item {% if 'calendar' in request.resolver_match.url_name %}active{% endif %}">
+            <i class="fas fa-calendar-alt"></i><span>Calendar</span>
+        </a>
+        <a href="{% url 'scheduler:session_list' %}" class="nav-item {% if 'session' in request.resolver_match.url_name and 'calendar' not in request.resolver_match.url_name %}active{% endif %}">
+            <i class="fas fa-clock"></i><span>Sessions</span>
+        </a>
+        <div class="nav-divider">Reports</div>
+        <a href="{% url 'scheduler:reports' %}" class="nav-item {% if request.resolver_match.url_name == 'reports' %}active{% endif %}">
+            <i class="fas fa-file-invoice-dollar"></i><span>Financial</span>
+        </a>
+        <a href="{% url 'scheduler:analytics' %}" class="nav-item {% if request.resolver_match.url_name == 'analytics' %}active{% endif %}">
+            <i class="fas fa-chart-line"></i><span>Analytics</span>
+        </a>
+        <div class="nav-divider">Settings</div>
+        <a href="{% url 'scheduler:working_hours' %}" class="nav-item {% if 'working_hours' in request.resolver_match.url_name %}active{% endif %}">
+            <i class="fas fa-business-time"></i><span>Working Hours</span>
+        </a>
+        <a href="{% url 'scheduler:exception_days' %}" class="nav-item {% if 'exception' in request.resolver_match.url_name %}active{% endif %}">
+            <i class="fas fa-calendar-times"></i><span>Exceptions</span>
+        </a>
+        <a href="{% url 'scheduler:prayer_times' %}" class="nav-item {% if 'prayer' in request.resolver_match.url_name %}active{% endif %}">
+            <i class="fas fa-mosque"></i><span>Prayer Times</span>
+        </a>
+    </nav>
+    <div class="sidebar-footer">
+        <a href="/admin/" class="nav-item">
+            <i class="fas fa-cog"></i><span>Admin Panel</span>
+        </a>
+    </div>
+</div>
+
+<!-- Main content -->
+<div class="main-wrapper">
+    <!-- Top bar -->
+    <header class="topbar">
+        <button class="sidebar-toggle" onclick="toggleSidebar()">
+            <i class="fas fa-bars"></i>
+        </button>
+        <div class="topbar-title">{% block page_title %}{% endblock %}</div>
+        <div class="topbar-actions">
+            <a href="{% url 'scheduler:session_create' %}?suggest=1" class="btn btn-primary btn-sm">
+                <i class="fas fa-plus me-1"></i>New Session
+            </a>
+            <a href="{% url 'scheduler:student_create' %}" class="btn btn-outline-secondary btn-sm ms-2">
+                <i class="fas fa-user-plus me-1"></i>New Student
+            </a>
+        </div>
+    </header>
+
+    <!-- Messages -->
+    {% if messages %}
+    <div class="messages-container">
+        {% for message in messages %}
+        <div class="alert alert-{{ message.tags|default:'info' }} alert-dismissible fade show" role="alert">
+            <i class="fas fa-{% if message.tags == 'success' %}check-circle{% elif message.tags == 'error' or message.tags == 'danger' %}exclamation-circle{% else %}info-circle{% endif %} me-2"></i>
+            {{ message }}
+            <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
+        </div>
+        {% endfor %}
+    </div>
+    {% endif %}
+
+    <!-- Page content -->
+    <main class="content">
+        {% block content %}{% endblock %}
+    </main>
+</div>
+
+<script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/js/bootstrap.bundle.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.0/dist/chart.umd.min.js"></script>
+<script>
+function toggleSidebar() {
+    document.getElementById('sidebar').classList.toggle('collapsed');
+    document.querySelector('.main-wrapper').classList.toggle('expanded');
+}
+// Auto-dismiss alerts after 5 seconds
+setTimeout(() => {
+    document.querySelectorAll('.alert').forEach(a => {
+        const bsAlert = bootstrap.Alert.getOrCreateInstance(a);
+        bsAlert.close();
+    });
+}, 5000);
+</script>
+{% block extra_js %}{% endblock %}
+</body>
+</html>

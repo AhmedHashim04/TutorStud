@@ -1,0 +1,78 @@
+{% extends "base.html" %}
+{% block title %}Prayer Times{% endblock %}
+{% block page_title %}Prayer Times{% endblock %}
+
+{% block content %}
+<div class="page-header">
+    <div>
+        <h1>Prayer Times</h1>
+        <p>Cairo, Egypt — Sessions are blocked 10–25 min after each adhan</p>
+    </div>
+</div>
+
+<div class="alert alert-info mb-4">
+    <i class="fas fa-mosque me-2"></i>
+    <strong>Blocking rule:</strong> From adhan → +10 min is allowed (before iqama). From +10 → +25 min is blocked for scheduling.
+</div>
+
+<div class="row g-4">
+    <div class="col-lg-5">
+        <div class="card">
+            <div class="card-header"><i class="fas fa-plus me-2 text-primary"></i>Add Prayer Time</div>
+            <div class="card-body">
+                <form method="post">
+                    {% csrf_token %}
+                    {% for field in form %}
+                    <div class="mb-3">
+                        <label class="form-label">{{ field.label }}</label>
+                        {{ field }}
+                        {% if field.errors %}<div class="text-danger mt-1" style="font-size:13px">{{ field.errors.0 }}</div>{% endif %}
+                    </div>
+                    {% endfor %}
+                    <button type="submit" class="btn btn-primary w-100">
+                        <i class="fas fa-save me-2"></i>Save Prayer Time
+                    </button>
+                </form>
+            </div>
+        </div>
+    </div>
+
+    <div class="col-lg-7">
+        <div class="card">
+            <div class="card-header"><i class="fas fa-clock me-2"></i>Saved Prayer Times</div>
+            <div class="card-body p-0">
+                {% if prayers %}
+                <table class="table">
+                    <thead><tr><th>Date</th><th>Prayer</th><th>Adhan</th><th>Blocked Until</th><th></th></tr></thead>
+                    <tbody>
+                        {% for p in prayers %}
+                        <tr>
+                            <td class="fw-semibold">{{ p.date|date:"M j, Y" }}</td>
+                            <td><span class="badge bg-light text-dark">{{ p.get_prayer_display }}</span></td>
+                            <td>{{ p.adhan_time|time:"H:i" }}</td>
+                            <td class="text-muted" style="font-size:13px">~+10 to +25 min</td>
+                            <td>
+                                <form method="post" action="{% url 'scheduler:prayer_time_delete' p.pk %}" style="display:inline">
+                                    {% csrf_token %}
+                                    <button type="submit" class="btn btn-sm btn-outline-danger btn-icon"
+                                        onclick="return confirm('Delete this prayer time?')">
+                                        <i class="fas fa-trash"></i>
+                                    </button>
+                                </form>
+                            </td>
+                        </tr>
+                        {% endfor %}
+                    </tbody>
+                </table>
+                {% else %}
+                <div class="empty-state">
+                    <i class="fas fa-mosque"></i>
+                    <h5>No prayer times saved</h5>
+                    <p>Add prayer times to enable automatic blocking.</p>
+                </div>
+                {% endif %}
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}

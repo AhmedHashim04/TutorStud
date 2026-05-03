@@ -1,0 +1,111 @@
+{% extends "base.html" %}
+{% block title %}{{ title }}{% endblock %}
+{% block page_title %}{{ title }}{% endblock %}
+
+{% block content %}
+<div class="page-header">
+    <div>
+        <h1>{{ title }}</h1>
+        <p>Schedule a tutoring session with smart validation</p>
+    </div>
+    <a href="{% url 'scheduler:session_list' %}" class="btn btn-outline-secondary">
+        <i class="fas fa-arrow-left me-2"></i>Back
+    </a>
+</div>
+
+<div class="row g-4">
+    <div class="col-lg-7">
+        <div class="card">
+            <div class="card-header"><i class="fas fa-calendar-plus me-2 text-primary"></i>Session Details</div>
+            <div class="card-body">
+                <form method="post">
+                    {% csrf_token %}
+                    {% for field in form %}
+                    <div class="mb-3">
+                        <label class="form-label">{{ field.label }}</label>
+                        {{ field }}
+                        {% if field.help_text %}<div class="form-text">{{ field.help_text }}</div>{% endif %}
+                        {% if field.errors %}<div class="text-danger mt-1" style="font-size:13px">{{ field.errors.0 }}</div>{% endif %}
+                    </div>
+                    {% endfor %}
+                    <div class="d-flex gap-2 mt-4">
+                        <button type="submit" class="btn btn-primary flex-1">
+                            <i class="fas fa-save me-2"></i>Save Session
+                        </button>
+                        <a href="{% url 'scheduler:session_list' %}" class="btn btn-outline-secondary">Cancel</a>
+                    </div>
+                </form>
+            </div>
+        </div>
+    </div>
+
+    <div class="col-lg-5">
+        <!-- Smart slot finder -->
+        <div class="card mb-3">
+            <div class="card-header"><i class="fas fa-magic me-2 text-purple"></i>Smart Slot Finder</div>
+            <div class="card-body">
+                <div class="mb-3">
+                    <label class="form-label">Duration</label>
+                    <select id="find-duration" class="form-select">
+                        <option value="30">30 minutes</option>
+                        <option value="60" selected>60 minutes</option>
+                    </select>
+                </div>
+                <button class="btn btn-outline-primary w-100 mb-2" onclick="findAndFill()">
+                    <i class="fas fa-search me-2"></i>Find Next Available Slot
+                </button>
+                <div id="slot-result" style="display:none"></div>
+            </div>
+        </div>
+
+        <!-- Validation hints -->
+        <div class="card">
+            <div class="card-header"><i class="fas fa-shield-alt me-2 text-success"></i>Validation Rules</div>
+            <div class="card-body">
+                <ul class="list-unstyled mb-0" style="font-size:13px">
+                    <li class="mb-2"><i class="fas fa-check-circle text-success me-2"></i>No overlapping sessions allowed</li>
+                    <li class="mb-2"><i class="fas fa-check-circle text-success me-2"></i>Must be within working hours</li>
+                    <li class="mb-2"><i class="fas fa-check-circle text-success me-2"></i>Prayer time blocks respected</li>
+                    <li class="mb-2"><i class="fas fa-check-circle text-success me-2"></i>Exception days blocked</li>
+                    <li><i class="fas fa-check-circle text-success me-2"></i>Cairo timezone (Africa/Cairo)</li>
+                </ul>
+            </div>
+        </div>
+    </div>
+</div>
+
+<script>
+function findAndFill() {
+    const duration = document.getElementById('find-duration').value;
+    const resultDiv = document.getElementById('slot-result');
+    resultDiv.style.display = 'block';
+    resultDiv.innerHTML = '<div class="text-muted"><i class="fas fa-spinner fa-spin me-2"></i>Searching...</div>';
+    fetch(`/api/suggest-slot/?duration=${duration}`)
+        .then(r => r.json())
+        .then(data => {
+            if (data.error) {
+                resultDiv.innerHTML = `<div class="alert alert-danger">${data.error}</div>`;
+            } else {
+                // Fill the form fields
+                const dateField = document.querySelector('[name=date]');
+                const startField = document.querySelector('[name=start_time]');
+                const durationField = document.querySelector('[name=duration]');
+                if (dateField) dateField.value = data.start.substring(0, 10);
+                if (startField) startField.value = data.start.substring(11, 16);
+                if (durationField) durationField.value = duration;
+
+                const startD = new Date(data.start);
+                const endD = new Date(data.end);
+                resultDiv.innerHTML = `<div class="alert alert-success">
+                    <i class="fas fa-check me-2"></i>
+                    <strong>Slot filled!</strong><br>
+                    ${startD.toLocaleString('en-GB',{dateStyle:'medium',timeStyle:'short'})} → ${endD.toLocaleTimeString('en-GB',{hour:'2-digit',minute:'2-digit'})}
+                </div>`;
+            }
+        })
+        .catch(() => {
+            resultDiv.innerHTML = '<div class="alert alert-danger">Failed. Try again.</div>';
+        });
+}
+</script>
+{% endblock %}

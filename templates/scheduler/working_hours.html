@@ -1,0 +1,60 @@
+{% extends "base.html" %}
+{% block title %}Working Hours{% endblock %}
+{% block page_title %}Working Hours{% endblock %}
+
+{% block content %}
+<div class="page-header">
+    <div>
+        <h1>Working Hours</h1>
+        <p>Set your available teaching hours for each day</p>
+    </div>
+</div>
+
+<div class="card">
+    <div class="card-header"><i class="fas fa-business-time me-2 text-primary"></i>Weekly Schedule</div>
+    <div class="card-body">
+        <form method="post">
+            {% csrf_token %}
+            <div class="row g-3">
+                {% for day in days %}
+                <div class="col-12">
+                    <div style="background:var(--bg);border-radius:10px;padding:16px;border:1px solid var(--border)">
+                        <div class="d-flex align-items-center gap-3 flex-wrap">
+                            <div style="width:120px;font-weight:600">{{ day.name }}</div>
+                            <div class="form-check form-switch">
+                                <input class="form-check-input" type="checkbox" name="day_{{ day.weekday }}_is_working"
+                                    id="working_{{ day.weekday }}"
+                                    {% if day.wh and day.wh.is_working %}checked{% endif %}
+                                    onchange="toggleDay({{ day.weekday }}, this.checked)">
+                                <label class="form-check-label" for="working_{{ day.weekday }}">Working</label>
+                            </div>
+                            <div class="d-flex align-items-center gap-2 day-times-{{ day.weekday }}" {% if not day.wh or not day.wh.is_working %}style="opacity:.4;pointer-events:none"{% endif %}>
+                                <span class="text-muted" style="font-size:13px">From</span>
+                                <input type="time" name="day_{{ day.weekday }}_start" class="form-control form-control-sm" style="width:110px"
+                                    value="{{ day.wh.start_time|time:'H:i'|default:'09:00' }}">
+                                <span class="text-muted" style="font-size:13px">To</span>
+                                <input type="time" name="day_{{ day.weekday }}_end" class="form-control form-control-sm" style="width:110px"
+                                    value="{{ day.wh.end_time|time:'H:i'|default:'17:00' }}">
+                            </div>
+                        </div>
+                    </div>
+                </div>
+                {% endfor %}
+            </div>
+            <button type="submit" class="btn btn-primary mt-4">
+                <i class="fas fa-save me-2"></i>Save Working Hours
+            </button>
+        </form>
+    </div>
+</div>
+
+<script>
+function toggleDay(weekday, isWorking) {
+    const el = document.querySelector('.day-times-' + weekday);
+    if (el) {
+        el.style.opacity = isWorking ? '1' : '0.4';
+        el.style.pointerEvents = isWorking ? 'auto' : 'none';
+    }
+}
+</script>
+{% endblock %}

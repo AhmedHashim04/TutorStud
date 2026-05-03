@@ -1,0 +1,131 @@
+{% extends "base.html" %}
+{% block title %}{{ student.name }}{% endblock %}
+{% block page_title %}Student Profile{% endblock %}
+
+{% block content %}
+<div class="page-header">
+    <div class="d-flex align-items-center gap-3">
+        <div class="student-avatar" style="width:56px;height:56px;font-size:22px">{{ student.name|first|upper }}</div>
+        <div>
+            <h1>{{ student.name }}</h1>
+            <p>{% if student.phone %}<i class="fas fa-phone me-1"></i>{{ student.phone }} · {% endif %}Joined {{ student.created_at|date:"M Y" }}</p>
+        </div>
+    </div>
+    <div class="d-flex gap-2">
+        <a href="{% url 'scheduler:student_edit' student.pk %}" class="btn btn-outline-primary btn-sm">
+            <i class="fas fa-edit me-1"></i>Edit
+        </a>
+        <a href="{% url 'scheduler:subscription_edit' student.pk %}" class="btn btn-outline-secondary btn-sm">
+            <i class="fas fa-tags me-1"></i>Subscription
+        </a>
+        <a href="{% url 'scheduler:student_delete' student.pk %}" class="btn btn-outline-danger btn-sm">
+            <i class="fas fa-trash me-1"></i>Delete
+        </a>
+    </div>
+</div>
+
+<div class="row g-4">
+    <!-- Subscription -->
+    <div class="col-lg-4">
+        <div class="card mb-3">
+            <div class="card-header"><i class="fas fa-tags me-2 text-purple"></i>Subscription</div>
+            <div class="card-body">
+                {% if subscription %}
+                <div class="row g-2 text-center mb-3">
+                    <div class="col-6">
+                        <div style="background:var(--bg);border-radius:8px;padding:12px">
+                            <div style="font-size:24px;font-weight:800;color:var(--primary)">{{ subscription.sessions_per_week }}</div>
+                            <div style="font-size:12px;color:var(--text-muted)">sessions/week</div>
+                        </div>
+                    </div>
+                    <div class="col-6">
+                        <div style="background:var(--bg);border-radius:8px;padding:12px">
+                            <div style="font-size:24px;font-weight:800;color:var(--secondary)">{{ subscription.session_duration }}</div>
+                            <div style="font-size:12px;color:var(--text-muted)">min / session</div>
+                        </div>
+                    </div>
+                </div>
+                <div style="font-size:13px;color:var(--text-muted)" class="mb-1">Rate: <strong>{{ subscription.hourly_rate }} EGP/hr</strong></div>
+                <div style="font-size:13px;color:var(--text-muted)" class="mb-1">Per session: <strong>{{ subscription.session_rate|floatformat:0 }} EGP</strong></div>
+                <hr>
+                <div style="background:linear-gradient(135deg,var(--primary),var(--secondary));border-radius:10px;padding:14px;color:white;text-align:center">
+                    <div style="font-size:12px;opacity:.8">Monthly Earnings</div>
+                    <div style="font-size:28px;font-weight:800">{{ subscription.monthly_earnings|floatformat:0 }}</div>
+                    <div style="font-size:11px;opacity:.7">EGP</div>
+                </div>
+                {% else %}
+                <div class="empty-state py-3">
+                    <i class="fas fa-tags"></i>
+                    <p>No subscription</p>
+                    <a href="{% url 'scheduler:subscription_edit' student.pk %}" class="btn btn-sm btn-primary">Add Subscription</a>
+                </div>
+                {% endif %}
+            </div>
+        </div>
+
+        {% if student.notes %}
+        <div class="card">
+            <div class="card-header"><i class="fas fa-sticky-note me-2"></i>Notes</div>
+            <div class="card-body">
+                <p style="font-size:14px;color:var(--text-muted);margin:0">{{ student.notes }}</p>
+            </div>
+        </div>
+        {% endif %}
+    </div>
+
+    <!-- Recent sessions -->
+    <div class="col-lg-8">
+        <div class="card">
+            <div class="card-header">
+                <span><i class="fas fa-history me-2 text-primary"></i>Recent Sessions</span>
+                <a href="{% url 'scheduler:session_create' %}" class="btn btn-sm btn-outline-primary">
+                    <i class="fas fa-plus me-1"></i>Add Session
+                </a>
+            </div>
+            <div class="card-body p-0">
+                {% if sessions %}
+                <table class="table">
+                    <thead>
+                        <tr>
+                            <th>Date & Time</th>
+                            <th>Duration</th>
+                            <th>Status</th>
+                            <th>Earnings</th>
+                            <th></th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        {% for session in sessions %}
+                        <tr>
+                            <td>
+                                <div class="fw-semibold">{{ session.start_time|date:"M j, Y" }}</div>
+                                <div class="text-muted" style="font-size:12px">{{ session.start_time|date:"H:i" }} – {{ session.end_time|date:"H:i" }}</div>
+                            </td>
+                            <td>{{ session.duration_minutes }} min</td>
+                            <td><span class="badge badge-{{ session.status }}">{{ session.get_status_display }}</span></td>
+                            <td>
+                                {% if session.status == "completed" %}
+                                <span class="fw-semibold text-success">{{ session.earnings|floatformat:0 }} EGP</span>
+                                {% else %}—{% endif %}
+                            </td>
+                            <td>
+                                <a href="{% url 'scheduler:session_detail' session.pk %}" class="btn btn-sm btn-outline-secondary btn-icon">
+                                    <i class="fas fa-eye"></i>
+                                </a>
+                            </td>
+                        </tr>
+                        {% endfor %}
+                    </tbody>
+                </table>
+                {% else %}
+                <div class="empty-state">
+                    <i class="fas fa-clock"></i>
+                    <h5>No sessions yet</h5>
+                    <a href="{% url 'scheduler:session_create' %}" class="btn btn-primary btn-sm">Schedule First Session</a>
+                </div>
+                {% endif %}
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}

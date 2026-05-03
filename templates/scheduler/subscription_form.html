@@ -1,0 +1,71 @@
+{% extends "base.html" %}
+{% block title %}Subscription{% endblock %}
+{% block page_title %}Subscription{% endblock %}
+
+{% block content %}
+<div class="page-header">
+    <div>
+        <h1>Subscription for {{ student.name }}</h1>
+        <p>Update pricing and session frequency</p>
+    </div>
+    <a href="{% url 'scheduler:student_detail' student.pk %}" class="btn btn-outline-secondary">
+        <i class="fas fa-arrow-left me-2"></i>Back
+    </a>
+</div>
+
+<div class="row g-4">
+    <div class="col-lg-6">
+        <div class="card">
+            <div class="card-header"><i class="fas fa-tags me-2 text-purple"></i>Subscription Details</div>
+            <div class="card-body">
+                <form method="post">
+                    {% csrf_token %}
+                    {% for field in form %}
+                    <div class="mb-3">
+                        <label class="form-label">{{ field.label }}</label>
+                        {{ field }}
+                        {% if field.errors %}<div class="text-danger mt-1" style="font-size:13px">{{ field.errors.0 }}</div>{% endif %}
+                    </div>
+                    {% endfor %}
+                    <div id="earnings-preview" style="background:linear-gradient(135deg,var(--primary),var(--secondary));border-radius:10px;padding:16px;color:white;margin-bottom:16px;display:none">
+                        <div class="d-flex justify-content-between">
+                            <div>
+                                <div style="font-size:11px;opacity:.8">Weekly</div>
+                                <div id="weekly-val" style="font-size:20px;font-weight:700">—</div>
+                            </div>
+                            <div style="text-align:right">
+                                <div style="font-size:11px;opacity:.8">Monthly</div>
+                                <div id="monthly-val" style="font-size:20px;font-weight:700">—</div>
+                            </div>
+                        </div>
+                    </div>
+                    <button type="submit" class="btn btn-primary w-100">
+                        <i class="fas fa-save me-2"></i>Save Subscription
+                    </button>
+                </form>
+            </div>
+        </div>
+    </div>
+</div>
+
+<script>
+function calcEarnings() {
+    const rate = parseFloat(document.querySelector('[name=hourly_rate]')?.value) || 0;
+    const sessions = parseInt(document.querySelector('[name=sessions_per_week]')?.value) || 0;
+    const duration = parseInt(document.querySelector('[name=session_duration]')?.value) || 60;
+    if (rate && sessions) {
+        const sessionRate = (rate * duration) / 60;
+        const weekly = sessionRate * sessions;
+        const monthly = weekly * 4.33;
+        document.getElementById('weekly-val').textContent = weekly.toFixed(0) + ' EGP';
+        document.getElementById('monthly-val').textContent = monthly.toFixed(0) + ' EGP';
+        document.getElementById('earnings-preview').style.display = 'block';
+    }
+}
+document.querySelectorAll('[name=hourly_rate],[name=sessions_per_week],[name=session_duration]').forEach(el => {
+    el.addEventListener('input', calcEarnings);
+    el.addEventListener('change', calcEarnings);
+});
+calcEarnings();
+</script>
+{% endblock %}

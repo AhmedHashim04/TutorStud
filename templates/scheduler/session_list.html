@@ -1,0 +1,103 @@
+{% extends "base.html" %}
+{% block title %}Sessions{% endblock %}
+{% block page_title %}Sessions{% endblock %}
+
+{% block content %}
+<div class="page-header">
+    <div>
+        <h1>Sessions</h1>
+        <p>All tutoring sessions</p>
+    </div>
+    <a href="{% url 'scheduler:session_create' %}" class="btn btn-primary">
+        <i class="fas fa-plus me-2"></i>New Session
+    </a>
+</div>
+
+<!-- Filters -->
+<div class="card mb-4">
+    <div class="card-body">
+        <form method="get" class="row g-3 align-items-end">
+            <div class="col-md-4">
+                <label class="form-label">Status</label>
+                <select name="status" class="form-select">
+                    <option value="">All Statuses</option>
+                    <option value="scheduled" {% if status_filter == "scheduled" %}selected{% endif %}>Scheduled</option>
+                    <option value="completed" {% if status_filter == "completed" %}selected{% endif %}>Completed</option>
+                    <option value="cancelled" {% if status_filter == "cancelled" %}selected{% endif %}>Cancelled</option>
+                    <option value="missed" {% if status_filter == "missed" %}selected{% endif %}>Missed</option>
+                </select>
+            </div>
+            <div class="col-md-4">
+                <label class="form-label">Student</label>
+                <select name="student" class="form-select">
+                    <option value="">All Students</option>
+                    {% for s in students %}
+                    <option value="{{ s.pk }}" {% if student_filter == s.pk|stringformat:"s" %}selected{% endif %}>{{ s.name }}</option>
+                    {% endfor %}
+                </select>
+            </div>
+            <div class="col-md-4">
+                <button type="submit" class="btn btn-outline-primary w-100">
+                    <i class="fas fa-filter me-2"></i>Filter
+                </button>
+            </div>
+        </form>
+    </div>
+</div>
+
+<div class="table-card">
+    {% if sessions %}
+    <table class="table">
+        <thead>
+            <tr>
+                <th>Student</th>
+                <th>Date & Time</th>
+                <th>Duration</th>
+                <th>Status</th>
+                <th>Type</th>
+                <th>Actions</th>
+            </tr>
+        </thead>
+        <tbody>
+            {% for session in sessions %}
+            <tr>
+                <td>
+                    <div class="d-flex align-items-center gap-2">
+                        <div class="student-avatar" style="width:32px;height:32px;font-size:13px">{{ session.student.name|first|upper }}</div>
+                        <div class="fw-semibold">{{ session.student.name }}</div>
+                    </div>
+                </td>
+                <td>
+                    <div class="fw-semibold">{{ session.start_time|date:"M j, Y" }}</div>
+                    <div class="text-muted" style="font-size:12px">{{ session.start_time|date:"H:i" }} – {{ session.end_time|date:"H:i" }}</div>
+                </td>
+                <td>{{ session.duration_minutes }} min</td>
+                <td><span class="badge badge-{{ session.status }}">{{ session.get_status_display }}</span></td>
+                <td>
+                    {% if session.is_makeup %}<span class="badge bg-warning text-dark">Makeup</span>
+                    {% elif session.is_recurring %}<span class="badge bg-info text-dark">Recurring</span>
+                    {% else %}<span class="badge bg-light text-muted">One-time</span>{% endif %}
+                </td>
+                <td>
+                    <div class="d-flex gap-1">
+                        <a href="{% url 'scheduler:session_detail' session.pk %}" class="btn btn-sm btn-outline-primary btn-icon" title="View">
+                            <i class="fas fa-eye"></i>
+                        </a>
+                        <a href="{% url 'scheduler:session_edit' session.pk %}" class="btn btn-sm btn-outline-secondary btn-icon" title="Edit">
+                            <i class="fas fa-edit"></i>
+                        </a>
+                    </div>
+                </td>
+            </tr>
+            {% endfor %}
+        </tbody>
+    </table>
+    {% else %}
+    <div class="empty-state">
+        <i class="fas fa-clock"></i>
+        <h5>No sessions found</h5>
+        <p>Try adjusting the filters or <a href="{% url 'scheduler:session_create' %}">add a new session</a>.</p>
+    </div>
+    {% endif %}
+</div>
+{% endblock %}
