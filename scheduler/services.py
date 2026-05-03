@@ -11,6 +11,7 @@ Responsibilities:
   - Quick reschedule
   - Makeup session validation
   - Occupancy rate analytics
+  - Recurring schedule generation
 
 All datetimes are stored in UTC in the database.
 All scheduling logic operates in Africa/Cairo (the tutor's local time).
@@ -79,7 +80,6 @@ def check_overlap(start_time, end_time, exclude_session_id=None):
     historical records and no longer occupy the slot.
     """
     from .models import Session
-    # Ensure aware datetimes so the ORM comparison is timezone-correct
     start_time = ensure_aware(start_time)
     end_time = ensure_aware(end_time)
 
@@ -165,7 +165,7 @@ def overlaps_prayer_time(start_time, end_time):
 
 # ─── Full Session Validation ─────────────────────────────────────────────────
 
-def validate_session(start_time, end_time, exclude_session_id=None):
+def validate_session(start_time, end_time, exclude_session_id=None, skip_working_hours=False):
     """
     Validate a proposed session slot against all business rules.
     Returns a list of human-readable error strings (empty list = valid).
@@ -173,26 +173,25 @@ def validate_session(start_time, end_time, exclude_session_id=None):
     Rules checked (in order):
       1. start_time must be before end_time
       2. The date must not be an exception day
-      3. The slot must fall within working hours
+      3. The slot must fall within working hours (unless skip_working_hours=True)
       4. The slot must not overlap any prayer-blocked window
       5. The slot must not overlap any other scheduled session
     """
     errors = []
 
-    # Normalise to Cairo-aware datetimes
     start_time = to_cairo(ensure_aware(start_time))
     end_time = to_cairo(ensure_aware(end_time))
 
     if start_time >= end_time:
         errors.append("Session end time must be after start time.")
-        return errors  # No point checking further
+        return errors
 
     d = start_time.date()
 
     if is_exception_day(d):
         errors.append(f"{d.strftime('%A, %B %-d')} is marked as an exception day (tutor unavailable).")
 
-    if not is_within_working_hours(start_time, end_time):
+    if not skip_working_hours and not is_within_working_hours(start_time, end_time):
         wh = get_working_hours(d)
         if wh:
             errors.append(
@@ -217,27 +216,136 @@ def validate_session(start_time, end_time, exclude_session_id=None):
     return errors
 
 
+# ─── Recurring Schedule Generation ───────────────────────────────────────────
+
+def _next_weekday(from_date, target_weekday):
+    """Return the next date on or after `from_date` that falls on `target_weekday` (0=Mon)."""
+    days_ahead = (target_weekday - from_date.weekday()) % 7
+    return from_date + timedelta(days=days_ahead)
+
+
+def generate_sessions_from_schedule(schedule, weeks=4, from_date=None):
+    """
+    Generate Session records from a RecurringSchedule for the next `weeks` weeks.
+
+    - Skips slots that fail validation (exception day, prayer block, overlap, etc.)
+    - Does NOT generate a session if one already exists for that schedule on that date.
+    - Returns a tuple: (created_count, skipped_reasons_list)
+    """
+    from .models import Session
+
+    if from_date is None:
+        from_date = timezone.localdate()
+
+    created = 0
+    skipped = []
+
+    # Find the first occurrence of the target weekday on or after from_date
+    first_day = _next_weekday(from_date, schedule.day_of_week)
+    duration = timedelta(minutes=schedule.duration)
+
+    for week_offset in range(weeks):
+        target_date = first_day + timedelta(weeks=week_offset)
+        start_dt = make_aware_cairo(target_date, schedule.start_time)
+        end_dt = start_dt + duration
+
+        # Skip if a session already exists for this schedule on this date
+        already_exists = Session.objects.filter(
+            recurring_schedule=schedule,
+            start_time__date=target_date,
+        ).exists()
+        if already_exists:
+            continue
+
+        # Validate
+        errors = validate_session(start_dt, end_dt)
+        if errors:
+            skipped.append({'date': target_date, 'errors': errors})
+            continue
+
+        Session.objects.create(
+            student=schedule.student,
+            start_time=start_dt,
+            end_time=end_dt,
+            status='scheduled',
+            recurring_schedule=schedule,
+            is_override=False,
+            is_recurring=True,
+        )
+        created += 1
+
+    return created, skipped
+
+
+def preview_sessions_from_schedule(schedule, weeks=4, from_date=None):
+    """
+    Return a list of preview dicts (date, start_dt, end_dt, valid, errors)
+    without creating any actual Session records.
+    """
+    if from_date is None:
+        from_date = timezone.localdate()
+
+    from .models import Session
+    preview = []
+    first_day = _next_weekday(from_date, schedule.day_of_week)
+    duration = timedelta(minutes=schedule.duration)
+
+    for week_offset in range(weeks):
+        target_date = first_day + timedelta(weeks=week_offset)
+        start_dt = make_aware_cairo(target_date, schedule.start_time)
+        end_dt = start_dt + duration
+
+        already_exists = Session.objects.filter(
+            recurring_schedule=schedule,
+            start_time__date=target_date,
+        ).exists()
+
+        errors = validate_session(start_dt, end_dt)
+        preview.append({
+            'date': target_date,
+            'start_dt': start_dt,
+            'end_dt': end_dt,
+            'valid': len(errors) == 0 and not already_exists,
+            'already_exists': already_exists,
+            'errors': errors,
+        })
+
+    return preview
+
+
+def delete_future_recurring_sessions(schedule):
+    """
+    Delete all future 'scheduled' sessions generated from this RecurringSchedule
+    that have NOT been individually overridden.
+    Overridden sessions are preserved.
+    """
+    from .models import Session
+    now = timezone.now()
+    Session.objects.filter(
+        recurring_schedule=schedule,
+        status='scheduled',
+        is_override=False,
+        start_time__gt=now,
+    ).delete()
+
+
+def regenerate_schedule(schedule, weeks=4):
+    """Delete future non-override sessions and regenerate."""
+    delete_future_recurring_sessions(schedule)
+    return generate_sessions_from_schedule(schedule, weeks=weeks)
+
+
 # ─── Next Available Slot Suggestion ──────────────────────────────────────────
 
 def suggest_next_slot(duration_minutes, from_dt=None, max_days=14):
     """
     Find and return the earliest available Cairo-aware slot of the given
     duration, starting from `from_dt` (defaults to now).
-
-    The search:
-      - Skips exception days entirely
-      - Skips non-working days
-      - Skips before working-hours start / moves to next day when past end
-      - Jumps past prayer-blocked windows
-      - Jumps past existing scheduled sessions
-      - Moves in 15-minute increments
-      - Gives up after `max_days` days and returns None
     """
     if from_dt is None:
         from_dt = timezone.now()
     current = to_cairo(from_dt).replace(second=0, microsecond=0)
 
-    # Round up to the next 15-minute boundary
     rem = current.minute % 15
     if rem:
         current += timedelta(minutes=15 - rem)
@@ -248,12 +356,10 @@ def suggest_next_slot(duration_minutes, from_dt=None, max_days=14):
     while current < deadline:
         d = current.date()
 
-        # Skip exception days
         if is_exception_day(d):
             current = make_aware_cairo(d + timedelta(days=1), time(0, 0))
             continue
 
-        # Skip non-working days
         wh = get_working_hours(d)
         if not wh:
             current = make_aware_cairo(d + timedelta(days=1), time(0, 0))
@@ -262,37 +368,33 @@ def suggest_next_slot(duration_minutes, from_dt=None, max_days=14):
         work_start = make_aware_cairo(d, wh.start_time)
         work_end = make_aware_cairo(d, wh.end_time)
 
-        # Jump to start of working hours if too early
         if current < work_start:
             current = work_start
             continue
 
-        # Move to next day if no room left today
         if current + duration > work_end:
             current = make_aware_cairo(d + timedelta(days=1), time(0, 0))
             continue
 
         slot_end = current + duration
 
-        # Check prayer-blocked windows; jump past any that overlap
         prayer_jumped = False
         for block_start, block_end in get_prayer_blocked_intervals(d):
             if sessions_overlap(current, slot_end, block_start, block_end):
-                current = block_end  # jump to end of blocked window
+                current = block_end
                 prayer_jumped = True
                 break
         if prayer_jumped:
             continue
 
-        # Check existing sessions; jump past any conflicts
         conflicts = check_overlap(current, slot_end)
         if conflicts:
             current = to_cairo(max(s.end_time for s in conflicts))
             continue
 
-        return current  # Valid slot found
+        return current
 
-    return None  # No slot found within the search window
+    return None
 
 
 # ─── Quick Reschedule ─────────────────────────────────────────────────────────

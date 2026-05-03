@@ -1,7 +1,7 @@
 from django import forms
 from django.utils import timezone
 
-from .models import Student, Subscription, Session, WorkingHours, ExceptionDay, PrayerTime, DEFAULT_HOURLY_RATE
+from .models import Student, Subscription, Session, RecurringSchedule, WorkingHours, ExceptionDay, PrayerTime, DEFAULT_HOURLY_RATE, WEEKDAYS
 
 COUNTRY_TIMEZONE_MAP = {
     'Egypt': 'Africa/Cairo',
@@ -72,7 +72,7 @@ class StudentForm(forms.ModelForm):
     timezone = forms.ChoiceField(
         choices=TIMEZONE_CHOICES,
         initial='Africa/Cairo',
-        help_text='The student’s local timezone. Auto-fills from country, but can be changed.',
+        help_text='The student\'s local timezone. Auto-fills from country, but can be changed.',
     )
 
     class Meta:
@@ -128,13 +128,46 @@ class SubscriptionForm(forms.ModelForm):
     def __init__(self, *args, **kwargs):
         super().__init__(*args, **kwargs)
         self.fields['hourly_rate'].initial = DEFAULT_HOURLY_RATE
-        self.fields['hourly_rate'].help_text = 'Stored as a snapshot on the subscription. New subscriptions use the global default.'
+        self.fields['hourly_rate'].help_text = 'Stored as a snapshot on the subscription. Changing this creates a new subscription record.'
         self.fields['start_date'].initial = timezone.localdate
 
 
+class RecurringScheduleForm(forms.ModelForm):
+    weeks_to_generate = forms.IntegerField(
+        min_value=1, max_value=12, initial=4,
+        label='Generate sessions for (weeks)',
+        help_text='How many weeks of sessions to generate immediately.'
+    )
+
+    class Meta:
+        model = RecurringSchedule
+        fields = ['day_of_week', 'start_time', 'duration', 'is_active']
+        widgets = {
+            'start_time': forms.TimeInput(attrs={'type': 'time'}),
+        }
+        labels = {
+            'day_of_week': 'Day of week',
+            'start_time': 'Start time (Cairo)',
+            'duration': 'Session duration',
+            'is_active': 'Active schedule',
+        }
+
+    def __init__(self, *args, **kwargs):
+        self.student = kwargs.pop('student', None)
+        super().__init__(*args, **kwargs)
+
+
 class SessionForm(forms.ModelForm):
-    start_time = forms.DateTimeField(widget=forms.DateTimeInput(attrs={'type': 'datetime-local'}), input_formats=['%Y-%m-%dT%H:%M'], help_text='Cairo time (Africa/Cairo)')
-    end_time = forms.DateTimeField(widget=forms.DateTimeInput(attrs={'type': 'datetime-local'}), input_formats=['%Y-%m-%dT%H:%M'], help_text='Cairo time (Africa/Cairo)')
+    start_time = forms.DateTimeField(
+        widget=forms.DateTimeInput(attrs={'type': 'datetime-local'}),
+        input_formats=['%Y-%m-%dT%H:%M'],
+        help_text='Cairo time (Africa/Cairo)'
+    )
+    end_time = forms.DateTimeField(
+        widget=forms.DateTimeInput(attrs={'type': 'datetime-local'}),
+        input_formats=['%Y-%m-%dT%H:%M'],
+        help_text='Cairo time (Africa/Cairo)'
+    )
 
     class Meta:
         model = Session
@@ -167,21 +200,30 @@ class WorkingHoursForm(forms.ModelForm):
     class Meta:
         model = WorkingHours
         fields = ['weekday', 'start_time', 'end_time', 'is_working']
-        widgets = {'start_time': forms.TimeInput(attrs={'type': 'time'}), 'end_time': forms.TimeInput(attrs={'type': 'time'})}
+        widgets = {
+            'start_time': forms.TimeInput(attrs={'type': 'time'}),
+            'end_time': forms.TimeInput(attrs={'type': 'time'}),
+        }
 
 
 class ExceptionDayForm(forms.ModelForm):
     class Meta:
         model = ExceptionDay
         fields = ['date', 'reason']
-        widgets = {'date': forms.DateInput(attrs={'type': 'date'}), 'reason': forms.TextInput(attrs={'placeholder': 'e.g. Public holiday, sick day…'})}
+        widgets = {
+            'date': forms.DateInput(attrs={'type': 'date'}),
+            'reason': forms.TextInput(attrs={'placeholder': 'e.g. Public holiday, sick day…'}),
+        }
 
 
 class PrayerTimeForm(forms.ModelForm):
     class Meta:
         model = PrayerTime
         fields = ['date', 'prayer', 'adhan_time']
-        widgets = {'date': forms.DateInput(attrs={'type': 'date'}), 'adhan_time': forms.TimeInput(attrs={'type': 'time'})}
+        widgets = {
+            'date': forms.DateInput(attrs={'type': 'date'}),
+            'adhan_time': forms.TimeInput(attrs={'type': 'time'}),
+        }
 
 
 class DateRangeForm(forms.Form):

@@ -15,7 +15,10 @@
             </p>
         </div>
     </div>
-    <div class="d-flex gap-2">
+    <div class="d-flex gap-2 flex-wrap">
+        <a href="{% url 'scheduler:recurring_schedule_create' student.pk %}" class="btn btn-primary btn-sm">
+            <i class="fas fa-repeat me-1"></i>Add Schedule
+        </a>
         <a href="{% url 'scheduler:student_edit' student.pk %}" class="btn btn-outline-primary btn-sm">
             <i class="fas fa-edit me-1"></i>Edit
         </a>
@@ -29,8 +32,10 @@
 </div>
 
 <div class="row g-4">
-    <!-- Subscription + info -->
+    <!-- Left column -->
     <div class="col-lg-4">
+
+        <!-- Subscription -->
         <div class="card mb-3">
             <div class="card-header"><i class="fas fa-tags me-2 text-purple"></i>Subscription</div>
             <div class="card-body">
@@ -67,38 +72,88 @@
             </div>
         </div>
 
+        <!-- Recurring Schedules -->
+        <div class="card mb-3">
+            <div class="card-header d-flex justify-content-between align-items-center">
+                <span><i class="fas fa-repeat me-2 text-primary"></i>Recurring Schedules</span>
+                <a href="{% url 'scheduler:recurring_schedule_create' student.pk %}" class="btn btn-sm btn-outline-primary">
+                    <i class="fas fa-plus"></i>
+                </a>
+            </div>
+            <div class="card-body p-0">
+                {% if schedules %}
+                <table class="table table-sm mb-0">
+                    <tbody>
+                        {% for sched in schedules %}
+                        <tr>
+                            <td>
+                                <div class="fw-semibold" style="font-size:14px">{{ sched.get_day_of_week_display }}</div>
+                                <div class="text-muted" style="font-size:12px">
+                                    {{ sched.start_time|time:"H:i" }} · {{ sched.duration }} min
+                                </div>
+                            </td>
+                            <td class="text-end" style="white-space:nowrap">
+                                <a href="{% url 'scheduler:recurring_schedule_edit' sched.pk %}" class="btn btn-xs btn-outline-secondary me-1" title="Edit schedule">
+                                    <i class="fas fa-edit"></i>
+                                </a>
+                                <form method="post" action="{% url 'scheduler:recurring_schedule_generate' sched.pk %}" style="display:inline" title="Generate 4 more weeks">
+                                    {% csrf_token %}
+                                    <input type="hidden" name="weeks" value="4">
+                                    <button type="submit" class="btn btn-xs btn-outline-primary me-1">
+                                        <i class="fas fa-sync-alt"></i>
+                                    </button>
+                                </form>
+                                <a href="{% url 'scheduler:recurring_schedule_delete' sched.pk %}" class="btn btn-xs btn-outline-danger" title="Deactivate">
+                                    <i class="fas fa-ban"></i>
+                                </a>
+                            </td>
+                        </tr>
+                        {% endfor %}
+                    </tbody>
+                </table>
+                {% else %}
+                <div class="empty-state py-3">
+                    <i class="fas fa-repeat" style="font-size:28px"></i>
+                    <p class="mt-2 mb-2" style="font-size:13px;color:var(--text-muted)">No recurring schedule yet</p>
+                    <a href="{% url 'scheduler:recurring_schedule_create' student.pk %}" class="btn btn-sm btn-primary">
+                        <i class="fas fa-plus me-1"></i>Set up Schedule
+                    </a>
+                </div>
+                {% endif %}
+            </div>
+        </div>
+
+        <!-- Student details -->
         <div class="card">
             <div class="card-header"><i class="fas fa-info-circle me-2"></i>Student Details</div>
             <div class="card-body">
                 <table class="table table-sm table-borderless mb-0">
                     {% if student.country %}
                     <tr>
-                        <td class="text-muted" style="width:40%">Country</td>
-                        <td>{{ flag }} {{ student.country }}</td>
+                        <td class="text-muted" style="width:40%;font-size:13px">Country</td>
+                        <td style="font-size:13px">{{ flag }} {{ student.country }}</td>
                     </tr>
                     {% endif %}
                     <tr>
-                        <td class="text-muted">Timezone</td>
+                        <td class="text-muted" style="font-size:13px">Timezone</td>
                         <td style="font-size:12px">{{ tz_label }}</td>
                     </tr>
                     {% if student.phone %}
                     <tr>
-                        <td class="text-muted">Phone</td>
-                        <td>{{ student.phone }}</td>
+                        <td class="text-muted" style="font-size:13px">Phone</td>
+                        <td style="font-size:13px">{{ student.phone }}</td>
                     </tr>
                     {% endif %}
                     <tr>
-                        <td class="text-muted">Joined</td>
-                        <td>{{ student.created_at|date:"M Y" }}</td>
+                        <td class="text-muted" style="font-size:13px">Joined</td>
+                        <td style="font-size:13px">{{ student.created_at|date:"M j, Y" }}</td>
                     </tr>
                     <tr>
-                        <td class="text-muted">Status</td>
+                        <td class="text-muted" style="font-size:13px">Status</td>
                         <td>
-                            {% if student.is_active %}
-                            <span class="badge badge-completed">Active</span>
-                            {% else %}
-                            <span class="badge bg-secondary">Inactive</span>
-                            {% endif %}
+                            <span class="badge {% if student.is_active %}badge-completed{% else %}bg-secondary{% endif %}">
+                                {% if student.is_active %}Active{% else %}Inactive{% endif %}
+                            </span>
                         </td>
                     </tr>
                 </table>
@@ -110,13 +165,13 @@
         </div>
     </div>
 
-    <!-- Recent sessions -->
+    <!-- Right column: sessions -->
     <div class="col-lg-8">
         <div class="card">
-            <div class="card-header">
+            <div class="card-header d-flex justify-content-between align-items-center">
                 <span><i class="fas fa-history me-2 text-primary"></i>Recent Sessions</span>
                 <a href="{% url 'scheduler:session_create' %}" class="btn btn-sm btn-outline-primary">
-                    <i class="fas fa-plus me-1"></i>Add Session
+                    <i class="fas fa-plus me-1"></i>One-off Session
                 </a>
             </div>
             <div class="card-body p-0">
@@ -127,6 +182,7 @@
                             <th>Date & Time (Cairo)</th>
                             <th>Duration</th>
                             <th>Status</th>
+                            <th>Type</th>
                             <th>Earnings</th>
                             <th></th>
                         </tr>
@@ -138,11 +194,22 @@
                                 <div class="fw-semibold">{{ session.start_time|date:"M j, Y" }}</div>
                                 <div class="text-muted" style="font-size:12px">
                                     {{ session.start_time|date:"H:i" }} – {{ session.end_time|date:"H:i" }}
-                                    <span class="text-muted" style="font-size:10px">Cairo</span>
+                                    <span style="font-size:10px">Cairo</span>
                                 </div>
                             </td>
                             <td>{{ session.duration_minutes }} min</td>
                             <td><span class="badge badge-{{ session.status }}">{{ session.get_status_display }}</span></td>
+                            <td>
+                                {% if session.is_override %}
+                                    <span class="badge" style="background:#7c3aed;font-size:10px">✏️ Override</span>
+                                {% elif session.recurring_schedule %}
+                                    <span class="badge" style="background:#3b82f6;font-size:10px">🔁 Recurring</span>
+                                {% elif session.is_makeup %}
+                                    <span class="badge bg-warning text-dark" style="font-size:10px">💊 Makeup</span>
+                                {% else %}
+                                    <span class="badge bg-secondary bg-opacity-50 text-dark" style="font-size:10px">One-off</span>
+                                {% endif %}
+                            </td>
                             <td>
                                 {% if session.status == "completed" %}
                                 <span class="fw-semibold text-success">{{ session.earnings|floatformat:0 }} EGP</span>
@@ -161,6 +228,7 @@
                 <div class="empty-state">
                     <i class="fas fa-clock"></i>
                     <h5>No sessions yet</h5>
+                    <p class="text-muted">Set up a recurring schedule above, or create a one-off session.</p>
                     <a href="{% url 'scheduler:session_create' %}" class="btn btn-primary btn-sm">Schedule First Session</a>
                 </div>
                 {% endif %}
@@ -168,4 +236,6 @@
         </div>
     </div>
 </div>
+
+<style>.btn-xs { padding: 3px 7px; font-size: 11px; line-height: 1.4; }</style>
 {% endblock %}

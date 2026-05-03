@@ -5,6 +5,16 @@ from decimal import Decimal
 
 DEFAULT_HOURLY_RATE = Decimal('200')
 
+WEEKDAYS = [
+    (0, 'Monday'),
+    (1, 'Tuesday'),
+    (2, 'Wednesday'),
+    (3, 'Thursday'),
+    (4, 'Friday'),
+    (5, 'Saturday'),
+    (6, 'Sunday'),
+]
+
 
 class Student(models.Model):
     name = models.CharField(max_length=200)
@@ -67,15 +77,40 @@ class Subscription(models.Model):
         return self.weekly_earnings * Decimal('4.33')
 
 
-WEEKDAYS = [
-    (0, 'Monday'),
-    (1, 'Tuesday'),
-    (2, 'Wednesday'),
-    (3, 'Thursday'),
-    (4, 'Friday'),
-    (5, 'Saturday'),
-    (6, 'Sunday'),
-]
+class RecurringSchedule(models.Model):
+    """
+    Defines a repeating weekly slot for a student.
+    e.g. "Every Sunday at 17:00 for 60 minutes".
+    Actual Session records are generated from this pattern.
+    """
+    DURATION_CHOICES = [
+        (30, '30 minutes'),
+        (45, '45 minutes'),
+        (60, '60 minutes'),
+        (90, '90 minutes'),
+    ]
+
+    student = models.ForeignKey(Student, on_delete=models.CASCADE, related_name='recurring_schedules')
+    subscription = models.ForeignKey(
+        Subscription, on_delete=models.SET_NULL, null=True, blank=True,
+        related_name='recurring_schedules'
+    )
+    day_of_week = models.IntegerField(choices=WEEKDAYS)
+    start_time = models.TimeField(help_text='Cairo time (Africa/Cairo)')
+    duration = models.IntegerField(choices=DURATION_CHOICES, default=60, help_text='Duration in minutes')
+    is_active = models.BooleanField(default=True)
+    created_at = models.DateTimeField(auto_now_add=True)
+
+    class Meta:
+        ordering = ['day_of_week', 'start_time']
+
+    def __str__(self):
+        day = self.get_day_of_week_display()
+        return f"{self.student.name} — {day} {self.start_time.strftime('%H:%M')} ({self.duration} min)"
+
+    @property
+    def day_name(self):
+        return dict(WEEKDAYS).get(self.day_of_week, '')
 
 
 class WorkingHours(models.Model):
@@ -139,6 +174,15 @@ class Session(models.Model):
     is_makeup = models.BooleanField(default=False)
     original_session = models.ForeignKey(
         'self', on_delete=models.SET_NULL, null=True, blank=True, related_name='makeup_sessions'
+    )
+    # Recurring schedule linkage
+    recurring_schedule = models.ForeignKey(
+        RecurringSchedule, on_delete=models.SET_NULL, null=True, blank=True,
+        related_name='sessions', help_text='The recurring pattern this session was generated from.'
+    )
+    is_override = models.BooleanField(
+        default=False,
+        help_text='True when this session has been individually modified from its recurring pattern.'
     )
     is_recurring = models.BooleanField(default=False)
     notes = models.TextField(blank=True)

@@ -64,15 +64,28 @@
                     <tr>
                         <td class="text-muted">Type</td>
                         <td>
-                            {% if session.is_makeup %}
-                                <span class="badge bg-warning text-dark">Makeup Session</span>
-                            {% elif session.is_recurring %}
-                                <span class="badge bg-info text-dark">Recurring</span>
+                            {% if session.is_override %}
+                                <span class="badge" style="background:#7c3aed">✏️ Override</span>
+                                <div class="form-text mt-1">Individually modified from a recurring pattern.</div>
+                            {% elif session.recurring_schedule %}
+                                <span class="badge bg-primary">🔁 Recurring</span>
+                            {% elif session.is_makeup %}
+                                <span class="badge bg-warning text-dark">💊 Makeup</span>
                             {% else %}
-                                <span class="badge bg-secondary">One-time</span>
+                                <span class="badge bg-secondary">One-off</span>
                             {% endif %}
                         </td>
                     </tr>
+                    {% if session.recurring_schedule %}
+                    <tr>
+                        <td class="text-muted">Schedule</td>
+                        <td style="font-size:13px">
+                            {{ session.recurring_schedule.get_day_of_week_display }}s at
+                            {{ session.recurring_schedule.start_time|time:"H:i" }}
+                            ({{ session.recurring_schedule.duration }} min)
+                        </td>
+                    </tr>
+                    {% endif %}
                     {% if session.status == "completed" %}
                     <tr>
                         <td class="text-muted">Earnings</td>

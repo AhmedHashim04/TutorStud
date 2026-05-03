@@ -17,6 +17,12 @@ urlpatterns = [
     # Subscriptions
     path('students/<int:student_pk>/subscription/', views.subscription_edit, name='subscription_edit'),
 
+    # Recurring Schedules
+    path('students/<int:student_pk>/schedules/add/', views.recurring_schedule_create, name='recurring_schedule_create'),
+    path('schedules/<int:pk>/edit/', views.recurring_schedule_edit, name='recurring_schedule_edit'),
+    path('schedules/<int:pk>/delete/', views.recurring_schedule_delete, name='recurring_schedule_delete'),
+    path('schedules/<int:pk>/generate/', views.recurring_schedule_generate, name='recurring_schedule_generate'),
+
     # Sessions / Calendar
     path('calendar/', views.calendar_view, name='calendar'),
     path('sessions/', views.session_list, name='session_list'),
@@ -28,9 +34,10 @@ urlpatterns = [
     path('sessions/<int:pk>/reschedule/', views.session_reschedule, name='session_reschedule'),
     path('sessions/<int:pk>/makeup/', views.session_makeup, name='session_makeup'),
 
-    # API endpoints for calendar
+    # API endpoints
     path('api/sessions/', views.api_sessions, name='api_sessions'),
     path('api/suggest-slot/', views.api_suggest_slot, name='api_suggest_slot'),
+    path('api/preview-schedule/', views.api_preview_schedule, name='api_preview_schedule'),
 
     # Working hours & exceptions
     path('settings/working-hours/', views.working_hours, name='working_hours'),
