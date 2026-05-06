@@ -2,27 +2,18 @@ from django import forms
 from django.utils import timezone
 from django.utils.translation import gettext_lazy as _
 
-from .models import Student, Session, RecurringSchedule, GlobalSettings, PrayerTime, SessionDurationOption
-
-TIMEZONE_CHOICES = [
-    ('Africa/Cairo', _('Egypt — Cairo (UTC+2/+3)')),
-    ('Europe/London', _('UK — London (UTC+0/+1)')),
-    ('America/New_York', _('USA — New York (UTC-5/-4)')),
-    ('Asia/Riyadh', _('Saudi Arabia — Riyadh (UTC+3)')),
-    ('Asia/Dubai', _('UAE — Dubai (UTC+4)')),
-    ('UTC', _('UTC')),
-]
+from .models import Student, Session, RecurringSchedule, GlobalSettings, PrayerTime, SessionDurationOption, COUNTRY_CHOICES
 
 class StudentForm(forms.ModelForm):
-    timezone = forms.ChoiceField(
-        choices=TIMEZONE_CHOICES, 
-        initial='Africa/Cairo', 
+    country = forms.ChoiceField(
+        choices=COUNTRY_CHOICES, 
+        initial='Egypt', 
         widget=forms.Select(attrs={'class': 'form-select form-control'})
     )
 
     class Meta:
         model = Student
-        fields = ['name', 'timezone', 'session_duration', 'session_price', 'notes', 'is_active']
+        fields = ['name', 'country', 'session_duration', 'session_price', 'notes', 'is_active']
         widgets = {
             'name': forms.TextInput(attrs={'class': 'form-control', 'placeholder': 'Student Name'}),
             'session_duration': forms.NumberInput(attrs={'class': 'form-control'}),

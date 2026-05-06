@@ -24,19 +24,23 @@ def validate_session(start_time, duration_minutes, exclude_session_id=None):
     Validate if a session slot is available.
     Returns a list of error strings (empty list means valid).
     """
+    from .models import Session, PrayerTime, GlobalSettings
     errors = []
     start_time = ensure_aware(start_time)
     end_time = start_time + timedelta(minutes=duration_minutes)
     
     d = to_cairo(start_time).date()
+    settings = GlobalSettings.load()
+    buffer_mins = settings.prayer_buffer_minutes
 
     # 1. Prayer Time Overlap Check
     prayers = PrayerTime.objects.filter(date=d)
     for p in prayers:
-        prayer_start = CAIRO_TZ.localize(datetime.combine(d, p.adhan_time))
+        # Prayer window starts at adhan + buffer, and lasts for p.duration minutes
+        prayer_start = CAIRO_TZ.localize(datetime.combine(d, p.adhan_time)) + timedelta(minutes=buffer_mins)
         prayer_end = prayer_start + timedelta(minutes=p.duration)
         if sessions_overlap(start_time, end_time, prayer_start, prayer_end):
-            errors.append(f"Overlaps with {p.get_prayer_display()} prayer time ({p.adhan_time.strftime('%H:%M')}).")
+            errors.append(f"Overlaps with {p.get_prayer_display()} prayer block (Starts {prayer_start.strftime('%H:%M')}).")
 
     # 2. Existing Session Overlap Check
     conflicting_sessions = Session.objects.filter(
@@ -129,6 +133,7 @@ def generate_sessions_for_all_active_students(weeks=4):
 
 def purge_future_sessions_for_inactive_student(student):
     """If a student becomes inactive, remove their future scheduled sessions."""
+    from .models import Session
     now = timezone.now()
     if not student.is_active:
         Session.objects.filter(
@@ -136,3 +141,51 @@ def purge_future_sessions_for_inactive_student(student):
             start_time__gt=now,
             status='scheduled'
         ).delete()
+
+
+import requests
+import re
+from datetime import time
+
+PRAYER_TIME_FIELD_MAP = {
+    'fajr': 'Fajr',
+    'dhuhr': 'Dhuhr',
+    'asr': 'Asr',
+    'maghrib': 'Maghrib',
+    'isha': 'Isha',
+}
+
+def _parse_api_time(value):
+    if not value:
+        return None
+    match = re.search(r'(\d{1,2}):(\d{2})', str(value))
+    if not match:
+        return None
+    hour, minute = map(int, match.groups())
+    return time(hour=hour, minute=minute)
+
+def fetch_cairo_prayer_times(target_date, method=5):
+    """Fetch Cairo prayer times for a specific date and save them."""
+    from .models import PrayerTime
+    date_str = target_date.strftime('%d-%m-%Y')
+    url = f'https://api.aladhan.com/v1/timingsByCity/{date_str}'
+    
+    # Hardcoded to Cairo, Egypt as per business rules
+    response = requests.get(url, params={'city': 'Cairo', 'country': 'Egypt', 'method': method}, timeout=10)
+    response.raise_for_status()
+    payload = response.json()
+    timings = payload.get('data', {}).get('timings', {})
+
+    created_count = 0
+    for field_name, api_name in PRAYER_TIME_FIELD_MAP.items():
+        adhan_t = _parse_api_time(timings.get(api_name))
+        if adhan_t:
+            obj, created = PrayerTime.objects.update_or_create(
+                date=target_date,
+                prayer=field_name,
+                defaults={'adhan_time': adhan_t, 'duration': 30} # Default block duration
+            )
+            if created:
+                created_count += 1
+                
+    return created_count

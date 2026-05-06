@@ -1,94 +1,83 @@
-{% extends "base.html" %}
+{% extends 'base.html' %}
 {% load i18n %}
-{% block title %}Students{% endblock %}
-{% block page_title %}Students{% endblock %}
+
+{% block page_title %}{% trans "Student Roster" %}{% endblock %}
 
 {% block content %}
-<div class="page-header">
-    <div>
-        <h1>{% trans "Students" %}</h1>
-        <p>{% trans "Manage your students and their subscriptions" %}</p>
+<div class="container-fluid py-4">
+    <div class="d-flex justify-content-between align-items-center mb-4">
+        <h3 class="mb-0">{% trans "All Students" %}</h3>
+        <button class="btn btn-primary" data-bs-toggle="modal" data-bs-target="#addStudentModal">
+            <i class="fas fa-plus me-1"></i>{% trans "Add Student" %}
+        </button>
     </div>
-    <a href="{% url 'scheduler:student_create' %}" class="btn btn-primary">
-        <i class="fas fa-user-plus me-2"></i>{% trans "Add Student" %}</a>
-</div>
 
-{% if students %}
-<div class="row g-3">
-    {% for student in students %}
-    <div class="col-md-6 col-lg-4">
-        <div class="student-card">
-            <div class="d-flex align-items-center gap-3 mb-3">
-                <div class="student-avatar">{{ student.name|first|upper }}</div>
-                <div class="flex-grow-1">
-                    <div class="fw-bold">{{ student.name }}</div>
-                    <div style="font-size:12px;color:var(--text-muted)">
-                        {% if student.country %}{{ student.country }} · {% endif %}{{ student.timezone|default:"UTC" }}
+    <div class="row row-cols-1 row-cols-md-2 row-cols-xl-3 g-4">
+        {% for student in students %}
+        <div class="col">
+            <div class="card h-100 shadow-sm {% if not student.is_active %}bg-light opacity-75{% endif %}">
+                <div class="card-body">
+                    <div class="d-flex justify-content-between align-items-start mb-3">
+                        <h5 class="card-title fw-bold mb-0">
+                            <a href="{% url 'scheduler:student_detail' student.pk %}" class="text-decoration-none text-dark">{{ student.name }}</a>
+                        </h5>
+                        <span class="badge bg-light text-dark border">{{ student.get_country_display|slice:":2" }} {{ student.country }}</span>
                     </div>
-                    {% if student.phone %}
-                    <div class="text-muted" style="font-size:12px"><i class="fas fa-phone me-1"></i>{{ student.phone }}</div>
+
+                    <div class="mb-3">
+                        <small class="text-muted d-block mb-1">{% trans "Next Session" %}</small>
+                        {% if student.next_session %}
+                            <div class="bg-light p-2 rounded">
+                                <strong class="d-block">{{ student.next_session.start_time|date:"D, M j" }}</strong>
+                                <span class="text-primary">{{ student.next_session.tutor_time|time:"g:i A" }} 🇪🇬</span>
+                                <span class="text-muted mx-1">|</span>
+                                <span class="text-secondary">{{ student.next_session.student_time|time:"g:i A" }} {{ student.get_country_display|slice:":2" }}</span>
+                            </div>
+                        {% else %}
+                            <div class="bg-light p-2 rounded text-muted">
+                                <em>{% trans "No upcoming sessions" %}</em>
+                            </div>
+                        {% endif %}
+                    </div>
+
+                    <div class="row text-center g-2 mb-3">
+                        <div class="col-4">
+                            <div class="bg-light p-2 rounded h-100">
+                                <small class="text-muted d-block" style="font-size:0.7rem;">{% trans "ATTENDANCE" %}</small>
+                                <strong class="{% if student.attendance_rate >= 80 %}text-success{% elif student.attendance_rate < 50 %}text-danger{% endif %}">{{ student.attendance_rate }}%</strong>
+                            </div>
+                        </div>
+                        <div class="col-4">
+                            <div class="bg-light p-2 rounded h-100">
+                                <small class="text-muted d-block" style="font-size:0.7rem;">{% trans "NO-SHOW" %}</small>
+                                <strong class="{% if student.no_show_rate > 20 %}text-danger{% endif %}">{{ student.no_show_rate }}%</strong>
+                            </div>
+                        </div>
+                        <div class="col-4">
+                            <div class="bg-light p-2 rounded h-100">
+                                <small class="text-muted d-block" style="font-size:0.7rem;">{% trans "REV (M)" %}</small>
+                                <strong class="text-primary">${{ student.monthly_revenue|floatformat:0 }}</strong>
+                            </div>
+                        </div>
+                    </div>
+
+                    {% if student.notes %}
+                    <div class="mt-auto">
+                        <small class="text-muted d-block mb-1">{% trans "Quick Note" %}</small>
+                        <p class="card-text text-truncate small bg-light p-2 rounded">{{ student.notes }}</p>
+                    </div>
                     {% endif %}
                 </div>
-                {% if not student.is_active %}<span class="badge bg-secondary">{% trans "Inactive" %}</span>{% endif %}
-            </div>
-
-            {% with sub=student.active_subscription %}
-            {% if sub %}
-            <div class="row g-2 mb-3">
-                <div class="col-6">
-                    <div style="background:#f8fafc;border-radius:8px;padding:10px;text-align:center">
-                        <div style="font-size:18px;font-weight:700;color:var(--primary)">{{ sub.sessions_per_week }}</div>
-                        <div style="font-size:11px;color:var(--text-muted)">{% trans "sessions/week" %}</div>
-                    </div>
+                <div class="card-footer bg-white border-top-0 pt-0">
+                    <a href="{% url 'scheduler:student_detail' student.pk %}" class="btn btn-outline-secondary btn-sm w-100">{% trans "View Mini OS" %} <i class="fas fa-arrow-right ms-1"></i></a>
                 </div>
-                <div class="col-6">
-                    <div style="background:#f8fafc;border-radius:8px;padding:10px;text-align:center">
-                        <div style="font-size:18px;font-weight:700;color:var(--success)">{{ sub.session_duration }}</div>
-                        <div style="font-size:11px;color:var(--text-muted)">{% trans "min / session" %}</div>
-                    </div>
-                </div>
-            </div>
-            <div style="background:linear-gradient(135deg,var(--primary),var(--secondary));border-radius:8px;padding:12px;color:white;margin-bottom:12px">
-                <div class="d-flex justify-content-between">
-                    <div>
-                        <div style="font-size:11px;opacity:.8">{% trans "Weekly" %}</div>
-                        <div style="font-weight:700">{{ sub.weekly_earnings|floatformat:0 }} EGP</div>
-                    </div>
-                    <div style="text-align:right">
-                        <div style="font-size:11px;opacity:.8">{% trans "Monthly" %}</div>
-                        <div style="font-weight:700">{{ sub.monthly_earnings|floatformat:0 }} EGP</div>
-                    </div>
-                </div>
-            </div>
-            {% else %}
-            <div class="alert alert-warning py-2 mb-3" style="font-size:13px">
-                <i class="fas fa-exclamation-triangle me-1"></i>{% trans "No active subscription" %}</div>
-            {% endif %}
-            {% endwith %}
-
-            <div class="d-flex gap-2">
-                <a href="{% url 'scheduler:student_detail' student.pk %}" class="btn btn-sm btn-outline-primary flex-grow-1">
-                    <i class="fas fa-eye me-1"></i>{% trans "View" %}</a>
-                <a href="{% url 'scheduler:student_edit' student.pk %}" class="btn btn-sm btn-outline-secondary" title="Edit">
-                    <i class="fas fa-edit"></i>
-                </a>
-                <a href="{% url 'scheduler:subscription_edit' student.pk %}" class="btn btn-sm btn-outline-secondary" title="Subscription">
-                    <i class="fas fa-tags"></i>
-                </a>
             </div>
         </div>
-    </div>
-    {% endfor %}
-</div>
-{% else %}
-<div class="card">
-    <div class="card-body">
-        <div class="empty-state">
-            <i class="fas fa-user-graduate"></i>
-            <h5>{% trans "No students yet" %}</h5>
-            <p>{% trans "Add your first student to get started." %}</p>
+        {% empty %}
+        <div class="col-12 text-center py-5">
+            <h5 class="text-muted">{% trans "No students yet." %}</h5>
         </div>
+        {% endfor %}
     </div>
 </div>
-{% endif %}
 {% endblock %}

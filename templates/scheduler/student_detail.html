@@ -1,236 +1,184 @@
-{% extends "base.html" %}
+{% extends 'base.html' %}
 {% load i18n %}
-{% block title %}{{ student.name }}{% endblock %}
-{% block page_title %}Student Profile{% endblock %}
+
+{% block page_title %}{% trans "Student OS:" %} {{ student.name }}{% endblock %}
 
 {% block content %}
-<div class="page-header">
-    <div class="d-flex align-items-center gap-3">
-        <div class="student-avatar" style="width:56px;height:56px;font-size:22px">{{ student.name|first|upper }}</div>
-        <div>
-            <h1>{{ flag }} {{ student.name }}</h1>
-            <p>
-                {% if student.country %}<i class="fas fa-globe me-1"></i>{{ student.country }} · {% endif %}
-                {% if student.phone %}<i class="fas fa-phone me-1"></i>{{ student.phone }} · {% endif %}
-                <i class="fas fa-clock me-1"></i>{{ tz_label }}
-            </p>
-        </div>
-    </div>
-    <div class="d-flex gap-2 flex-wrap">
-        <a href="{% url 'scheduler:recurring_schedule_create' student.pk %}" class="btn btn-primary btn-sm">
-            <i class="fas fa-repeat me-1"></i>{% trans "Add Schedule" %}</a>
-        <a href="{% url 'scheduler:student_edit' student.pk %}" class="btn btn-outline-primary btn-sm">
-            <i class="fas fa-edit me-1"></i>{% trans "Edit" %}</a>
-        <a href="{% url 'scheduler:subscription_edit' student.pk %}" class="btn btn-outline-secondary btn-sm">
-            <i class="fas fa-tags me-1"></i>{% trans "Subscription" %}</a>
-        <a href="{% url 'scheduler:student_delete' student.pk %}" class="btn btn-outline-danger btn-sm">
-            <i class="fas fa-trash me-1"></i>{% trans "Delete" %}</a>
-    </div>
-</div>
+<div class="container-fluid py-4">
+    <div class="row">
+        <!-- LEFT COLUMN: Profile & Analytics -->
+        <div class="col-lg-4 mb-4">
 
-<div class="row g-4">
-    <!-- Left column -->
-    <div class="col-lg-4">
+            <!-- Profile Card -->
+            <div class="card shadow-sm mb-4">
+                <div class="card-body">
+                    <div class="d-flex justify-content-between align-items-center mb-3">
+                        <h4 class="mb-0 fw-bold">{{ student.name }}</h4>
+                        {% if student.is_active %}
+                        <span class="badge bg-success">Active</span>
+                        {% else %}
+                        <span class="badge bg-secondary">Inactive</span>
+                        {% endif %}
+                    </div>
 
-        <!-- Subscription -->
-        <div class="card mb-3">
-            <div class="card-header"><i class="fas fa-tags me-2 text-purple"></i>{% trans "Subscription" %}</div>
-            <div class="card-body">
-                {% if subscription %}
-                <div class="row g-2 text-center mb-3">
-                    <div class="col-6">
-                        <div style="background:var(--bg);border-radius:8px;padding:12px">
-                            <div style="font-size:24px;font-weight:800;color:var(--primary)">{{ subscription.sessions_per_week }}</div>
-                            <div style="font-size:12px;color:var(--text-muted)">{% trans "sessions/week" %}</div>
+                    <div class="bg-light p-3 rounded mb-3">
+                        <div class="d-flex align-items-center gap-2 mb-2">
+                            <span class="fs-4">{{ student.get_country_display|slice:":2" }}</span>
+                            <strong>{{ student.get_country_display|slice:"3:" }}</strong>
+                        </div>
+                        <div class="text-primary small fw-bold">
+                            <i class="fas fa-clock me-1"></i> {{ student.timezone_difference_str }}
                         </div>
                     </div>
-                    <div class="col-6">
-                        <div style="background:var(--bg);border-radius:8px;padding:12px">
-                            <div style="font-size:24px;font-weight:800;color:var(--secondary)">{{ subscription.session_duration }}</div>
-                            <div style="font-size:12px;color:var(--text-muted)">{% trans "min / session" %}</div>
+
+                    <div class="d-flex justify-content-between text-muted small">
+                        <span><i class="fas fa-stopwatch me-1"></i> {{ student.session_duration }} mins</span>
+                        <span><i class="fas fa-tag me-1"></i> ${{ student.session_price }} / session</span>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Analytics Mini-Dashboard -->
+            <div class="row g-2 mb-4">
+                <div class="col-6">
+                    <div class="card bg-light border-0 h-100">
+                        <div class="card-body text-center p-3">
+                            <h3
+                                class="mb-0 {% if student.attendance_rate >= 80 %}text-success{% elif student.attendance_rate < 50 %}text-danger{% endif %}">
+                                {{ student.attendance_rate }}%</h3>
+                            <small class="text-muted text-uppercase" style="font-size: 0.7rem;">Attendance</small>
                         </div>
                     </div>
                 </div>
-                <div style="font-size:13px;color:var(--text-muted)" class="mb-1">{% trans "Rate:" %}<strong>{{ subscription.hourly_rate }} EGP/hr</strong></div>
-                <div style="font-size:13px;color:var(--text-muted)" class="mb-1">{% trans "Per session:" %}<strong>{{ subscription.session_rate|floatformat:0 }} EGP</strong></div>
-                <hr>
-                <div style="background:linear-gradient(135deg,var(--primary),var(--secondary));border-radius:10px;padding:14px;color:white;text-align:center">
-                    <div style="font-size:12px;opacity:.8">{% trans "Estimated Monthly Earnings" %}</div>
-                    <div style="font-size:28px;font-weight:800">{{ subscription.monthly_earnings|floatformat:0 }}</div>
-                    <div style="font-size:11px;opacity:.7">{% trans "EGP" %}</div>
+                <div class="col-6">
+                    <div class="card bg-light border-0 h-100">
+                        <div class="card-body text-center p-3">
+                            <h3 class="mb-0 text-primary">${{ student.monthly_revenue|floatformat:0 }}</h3>
+                            <small class="text-muted text-uppercase" style="font-size: 0.7rem;">Rev This Month</small>
+                        </div>
+                    </div>
                 </div>
-                {% else %}
-                <div class="empty-state py-3">
-                    <i class="fas fa-tags"></i>
-                    <p>{% trans "No subscription" %}</p>
-                    <a href="{% url 'scheduler:subscription_edit' student.pk %}" class="btn btn-sm btn-primary">{% trans "Add Subscription" %}</a>
+            </div>
+
+            <!-- Editable Notes -->
+            <div class="card shadow-sm">
+                <div class="card-header bg-white d-flex justify-content-between align-items-center">
+                    <h5 class="mb-0">{% trans "Quick Notes" %}</h5>
                 </div>
-                {% endif %}
+                <div class="card-body">
+                    <form action="{% url 'scheduler:update_student_notes' student.pk %}" method="post">
+                        {% csrf_token %}
+                        <textarea name="notes" class="form-control border-0 bg-light mb-3" rows="5"
+                            placeholder="Type notes here...">{{ student.notes }}</textarea>
+                        <button type="submit" class="btn btn-sm btn-outline-primary w-100">Save Notes</button>
+                    </form>
+                </div>
             </div>
         </div>
 
-        <!-- Recurring Schedules -->
-        <div class="card mb-3">
-            <div class="card-header d-flex justify-content-between align-items-center">
-                <span><i class="fas fa-repeat me-2 text-primary"></i>{% trans "Recurring Schedules" %}</span>
-                <a href="{% url 'scheduler:recurring_schedule_create' student.pk %}" class="btn btn-sm btn-outline-primary">
-                    <i class="fas fa-plus"></i>
-                </a>
-            </div>
-            <div class="card-body p-0">
-                {% if schedules %}
-                <table class="table table-sm mb-0">
-                    <tbody>
-                        {% for sched in schedules %}
-                        <tr>
-                            <td>
-                                <div class="fw-semibold" style="font-size:14px">{{ sched.get_day_of_week_display }}</div>
-                                <div class="text-muted" style="font-size:12px">
-                                    {{ sched.start_time|time:"H:i" }} · {{ sched.duration }} min
+        <!-- RIGHT COLUMN: The Timeline -->
+        <div class="col-lg-8">
+
+            <ul class="nav nav-pills mb-3" id="timelineTabs" role="tablist">
+                <li class="nav-item" role="presentation">
+                    <button class="nav-link active" id="upcoming-tab" data-bs-toggle="pill" data-bs-target="#upcoming"
+                        type="button" role="tab">Upcoming Sessions</button>
+                </li>
+                <li class="nav-item" role="presentation">
+                    <button class="nav-link" id="past-tab" data-bs-toggle="pill" data-bs-target="#past" type="button"
+                        role="tab">Past History</button>
+                </li>
+            </ul>
+
+            <div class="tab-content" id="timelineTabsContent">
+                <!-- UPCOMING SESSIONS -->
+                <div class="tab-pane fade show active" id="upcoming" role="tabpanel">
+                    <div class="card shadow-sm">
+                        <div class="card-body p-0">
+                            <div class="list-group list-group-flush">
+                                {% for session in upcoming_sessions %}
+                                <div class="list-group-item p-4">
+                                    <div class="row align-items-center">
+                                        <div class="col-md-3">
+                                            <h5 class="mb-0">{{ session.start_time|date:"D, M j" }}</h5>
+                                        </div>
+                                        <div class="col-md-6">
+                                            <!-- DUAL TIMEZONE RENDERING -->
+                                            <div class="d-flex align-items-center gap-3">
+                                                <div class="bg-light px-2 py-1 rounded">
+                                                    <small class="text-muted d-block" style="font-size: 0.7rem;">🇪🇬 MY
+                                                        TIME</small>
+                                                    <strong>{{ session.tutor_time|time:"g:i A" }}</strong>
+                                                </div>
+                                                <i class="fas fa-arrow-right text-muted" style="font-size: 0.8rem;"></i>
+                                                <div
+                                                    class="bg-light px-2 py-1 rounded border-start border-primary border-3">
+                                                    <small class="text-muted d-block" style="font-size: 0.7rem;">STUDENT
+                                                        ({{ student.get_country_display|slice:":2" }})</small>
+                                                    <strong>{{ session.student_time|time:"g:i A" }}</strong>
+                                                </div>
+                                            </div>
+                                        </div>
+                                        <div class="col-md-3 text-end">
+                                            <form action="{% url 'scheduler:delete_session' session.pk %}" method="post"
+                                                class="d-inline">
+                                                {% csrf_token %}
+                                                <input type="hidden" name="next" value="{{ request.path }}">
+                                                <button type="submit" class="btn btn-sm btn-outline-danger"><i
+                                                        class="fas fa-trash"></i></button>
+                                            </form>
+                                        </div>
+                                    </div>
                                 </div>
-                            </td>
-                            <td class="text-end" style="white-space:nowrap">
-                                <a href="{% url 'scheduler:recurring_schedule_edit' sched.pk %}" class="btn btn-xs btn-outline-secondary me-1" title="Edit schedule">
-                                    <i class="fas fa-edit"></i>
-                                </a>
-                                <form method="post" action="{% url 'scheduler:recurring_schedule_generate' sched.pk %}" style="display:inline" title="Generate 4 more weeks">
-                                    {% csrf_token %}
-                                    <input type="hidden" name="weeks" value="4">
-                                    <button type="submit" class="btn btn-xs btn-outline-primary me-1">
-                                        <i class="fas fa-sync-alt"></i>
-                                    </button>
-                                </form>
-                                <a href="{% url 'scheduler:recurring_schedule_delete' sched.pk %}" class="btn btn-xs btn-outline-danger" title="Deactivate">
-                                    <i class="fas fa-ban"></i>
-                                </a>
-                            </td>
-                        </tr>
-                        {% endfor %}
-                    </tbody>
-                </table>
-                {% else %}
-                <div class="empty-state py-3">
-                    <i class="fas fa-repeat" style="font-size:28px"></i>
-                    <p class="mt-2 mb-2" style="font-size:13px;color:var(--text-muted)">{% trans "No recurring schedule yet" %}</p>
-                    <a href="{% url 'scheduler:recurring_schedule_create' student.pk %}" class="btn btn-sm btn-primary">
-                        <i class="fas fa-plus me-1"></i>{% trans "Set up Schedule" %}</a>
-                </div>
-                {% endif %}
-            </div>
-        </div>
-
-        <!-- Student details -->
-        <div class="card">
-            <div class="card-header"><i class="fas fa-info-circle me-2"></i>{% trans "Student Details" %}</div>
-            <div class="card-body">
-                <table class="table table-sm table-borderless mb-0">
-                    {% if student.country %}
-                    <tr>
-                        <td class="text-muted" style="width:40%;font-size:13px">{% trans "Country" %}</td>
-                        <td style="font-size:13px">{{ flag }} {{ student.country }}</td>
-                    </tr>
-                    {% endif %}
-                    <tr>
-                        <td class="text-muted" style="font-size:13px">{% trans "Timezone" %}</td>
-                        <td style="font-size:12px">{{ tz_label }}</td>
-                    </tr>
-                    {% if student.phone %}
-                    <tr>
-                        <td class="text-muted" style="font-size:13px">{% trans "Phone" %}</td>
-                        <td style="font-size:13px">{{ student.phone }}</td>
-                    </tr>
-                    {% endif %}
-                    <tr>
-                        <td class="text-muted" style="font-size:13px">{% trans "Joined" %}</td>
-                        <td style="font-size:13px">{{ student.created_at|date:"M j, Y" }}</td>
-                    </tr>
-                    <tr>
-                        <td class="text-muted" style="font-size:13px">{% trans "Status" %}</td>
-                        <td>
-                            <span class="badge {% if student.is_active %}badge-completed{% else %}bg-secondary{% endif %}">
-                                {% if student.is_active %}Active{% else %}Inactive{% endif %}
-                            </span>
-                        </td>
-                    </tr>
-                </table>
-                {% if student.notes %}
-                <hr>
-                <p style="font-size:13px;color:var(--text-muted);margin:0">{{ student.notes }}</p>
-                {% endif %}
-            </div>
-        </div>
-    </div>
-
-    <!-- Right column: sessions -->
-    <div class="col-lg-8">
-        <div class="card">
-            <div class="card-header d-flex justify-content-between align-items-center">
-                <span><i class="fas fa-history me-2 text-primary"></i>{% trans "Recent Sessions" %}</span>
-                <a href="{% url 'scheduler:session_create' %}" class="btn btn-sm btn-outline-primary">
-                    <i class="fas fa-plus me-1"></i>{% trans "One-off Session" %}</a>
-            </div>
-            <div class="card-body p-0">
-                {% if sessions %}
-                <table class="table">
-                    <thead>
-                        <tr>
-                            <th>{% trans "Date & Time (Cairo)" %}</th>
-                            <th>{% trans "Duration" %}</th>
-                            <th>{% trans "Status" %}</th>
-                            <th>{% trans "Type" %}</th>
-                            <th>{% trans "Earnings" %}</th>
-                            <th></th>
-                        </tr>
-                    </thead>
-                    <tbody>
-                        {% for session in sessions %}
-                        <tr>
-                            <td>
-                                <div class="fw-semibold">{{ session.start_time|date:"M j, Y" }}</div>
-                                <div class="text-muted" style="font-size:12px">
-                                    {{ session.start_time|date:"H:i" }} – {{ session.end_time|date:"H:i" }}
-                                    <span style="font-size:10px">{% trans "Cairo" %}</span>
+                                {% empty %}
+                                <div class="p-5 text-center text-muted">
+                                    <i class="fas fa-calendar-times fa-2x mb-3 text-secondary"></i>
+                                    <p class="mb-0">{% trans "No upcoming sessions. Generate some from the dashboard!"
+                                        %}</p>
                                 </div>
-                            </td>
-                            <td>{{ session.duration_minutes }} min</td>
-                            <td><span class="badge badge-{{ session.status }}">{{ session.get_status_display }}</span></td>
-                            <td>
-                                {% if session.is_override %}
-                                    <span class="badge" style="background:#7c3aed;font-size:10px">{% trans "✏️ Override" %}</span>
-                                {% elif session.recurring_schedule %}
-                                    <span class="badge" style="background:#3b82f6;font-size:10px">{% trans "🔁 Recurring" %}</span>
-                                {% elif session.is_makeup %}
-                                    <span class="badge bg-warning text-dark" style="font-size:10px">{% trans "💊 Makeup" %}</span>
-                                {% else %}
-                                    <span class="badge bg-secondary bg-opacity-50 text-dark" style="font-size:10px">{% trans "One-off" %}</span>
-                                {% endif %}
-                            </td>
-                            <td>
-                                {% if session.status == "completed" %}
-                                <span class="fw-semibold text-success">{{ session.earnings|floatformat:0 }} EGP</span>
-                                {% else %}—{% endif %}
-                            </td>
-                            <td>
-                                <a href="{% url 'scheduler:session_detail' session.pk %}" class="btn btn-sm btn-outline-secondary btn-icon">
-                                    <i class="fas fa-eye"></i>
-                                </a>
-                            </td>
-                        </tr>
-                        {% endfor %}
-                    </tbody>
-                </table>
-                {% else %}
-                <div class="empty-state">
-                    <i class="fas fa-clock"></i>
-                    <h5>{% trans "No sessions yet" %}</h5>
-                    <p class="text-muted">{% trans "Set up a recurring schedule above, or create a one-off session." %}</p>
-                    <a href="{% url 'scheduler:session_create' %}" class="btn btn-primary btn-sm">{% trans "Schedule First Session" %}</a>
+                                {% endfor %}
+                            </div>
+                        </div>
+                    </div>
                 </div>
-                {% endif %}
+
+                <!-- PAST SESSIONS -->
+                <div class="tab-pane fade" id="past" role="tabpanel">
+                    <div class="card shadow-sm">
+                        <div class="card-body p-0">
+                            <div class="list-group list-group-flush">
+                                {% for session in past_sessions %}
+                                <div class="list-group-item p-3">
+                                    <div class="d-flex justify-content-between align-items-center">
+                                        <div>
+                                            <strong>{{ session.start_time|date:"D, M j" }}</strong>
+                                            <span class="text-muted ms-2">{{ session.tutor_time|time:"g:i A" }}</span>
+                                        </div>
+                                        <div>
+                                            {% if session.status == 'attended' %}
+                                            <span class="badge bg-success">Attended</span>
+                                            {% elif session.status == 'absent' %}
+                                            <span class="badge bg-danger">No-Show</span>
+                                            {% elif session.status == 'excused' %}
+                                            <span class="badge bg-warning">Excused</span>
+                                            {% else %}
+                                            <span class="badge bg-dark">Cancelled</span>
+                                            {% endif %}
+                                        </div>
+                                    </div>
+                                </div>
+                                {% empty %}
+                                <div class="p-5 text-center text-muted">
+                                    <p class="mb-0">{% trans "No past session history." %}</p>
+                                </div>
+                                {% endfor %}
+                            </div>
+                        </div>
+                    </div>
+                </div>
             </div>
+
         </div>
     </div>
 </div>
-
-<style>.btn-xs { padding: 3px 7px; font-size: 11px; line-height: 1.4; }</style>
 {% endblock %}

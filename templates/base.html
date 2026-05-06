@@ -10,6 +10,10 @@
     <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.0/css/all.min.css" rel="stylesheet">
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&display=swap" rel="stylesheet">
     <link href="/static/css/main.css" rel="stylesheet">
+    <style>
+        @keyframes fadeIn { from { opacity: 0; } to { opacity: 1; } }
+        .content { animation: fadeIn 0.3s ease-in-out; }
+    </style>
     {% block extra_css %}{% endblock %}
 </head>
 <body>
@@ -20,8 +24,9 @@
         <span class="brand-text">TutorSys</span>
     </div>
     <nav class="sidebar-nav">
-        <a href="{% url 'scheduler:dashboard' %}" class="nav-item active"><i class="fas fa-chart-pie"></i><span>{% trans "Dashboard" %}</span></a>
-        <a href="{% url 'scheduler:settings' %}" class="nav-item"><i class="fas fa-cog"></i><span>{% trans "Settings" %}</span></a>
+        <a href="{% url 'scheduler:dashboard' %}" class="nav-item {% if request.resolver_match.url_name == 'dashboard' %}active{% endif %}"><i class="fas fa-chart-pie"></i><span>{% trans "Dashboard" %}</span></a>
+        <a href="{% url 'scheduler:student_list' %}" class="nav-item {% if 'student' in request.resolver_match.url_name %}active{% endif %}"><i class="fas fa-user-graduate"></i><span>{% trans "Students" %}</span></a>
+        <a href="{% url 'scheduler:settings' %}" class="nav-item {% if request.resolver_match.url_name == 'settings' %}active{% endif %}"><i class="fas fa-cog"></i><span>{% trans "Settings" %}</span></a>
     </nav>
 </div>
 
@@ -50,6 +55,72 @@
     <main class="content">{% block content %}{% endblock %}</main>
 </div>
 
+<!-- Add Student Modal -->
+<div class="modal fade" id="addStudentModal" tabindex="-1" aria-hidden="true">
+  <div class="modal-dialog">
+    <div class="modal-content">
+      <div class="modal-header">
+        <h5 class="modal-title">{% trans "Add Student (Fast Setup)" %}</h5>
+        <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+      </div>
+      <form action="{% url 'scheduler:add_student' %}" method="post">
+          <div class="modal-body">
+              {% csrf_token %}
+              {{ student_form.as_p }}
+              
+              <hr>
+              <h6>{% trans "Recurring Schedule" %}</h6>
+              <div id="schedule-rows">
+                  <div class="row mb-2">
+                      <div class="col-6">
+                          <select name="schedule_day_0" class="form-select">
+                              <option value="5">Saturday</option>
+                              <option value="6">Sunday</option>
+                              <option value="0">Monday</option>
+                              <option value="1">Tuesday</option>
+                              <option value="2">Wednesday</option>
+                              <option value="3">Thursday</option>
+                              <option value="4">Friday</option>
+                          </select>
+                      </div>
+                      <div class="col-6">
+                          <input type="time" name="schedule_time_0" class="form-control" required>
+                      </div>
+                  </div>
+              </div>
+              <button type="button" class="btn btn-sm btn-link" onclick="addScheduleRow()">+ Add Another Day</button>
+          </div>
+          <div class="modal-footer">
+            <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Close</button>
+            <button type="submit" class="btn btn-primary">Save & Generate</button>
+          </div>
+      </form>
+    </div>
+  </div>
+</div>
+
+<!-- Add Manual Session Modal -->
+<div class="modal fade" id="addSessionModal" tabindex="-1" aria-hidden="true">
+  <div class="modal-dialog">
+    <div class="modal-content">
+      <div class="modal-header">
+        <h5 class="modal-title">{% trans "Drop Manual Session" %}</h5>
+        <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+      </div>
+      <form action="{% url 'scheduler:add_session' %}" method="post">
+          <div class="modal-body">
+              {% csrf_token %}
+              {{ session_form.as_p }}
+          </div>
+          <div class="modal-footer">
+            <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Close</button>
+            <button type="submit" class="btn btn-primary">Add to Calendar</button>
+          </div>
+      </form>
+    </div>
+  </div>
+</div>
+
 <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/js/bootstrap.bundle.min.js"></script>
 <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.0/dist/chart.umd.min.js"></script>
 <script>
@@ -63,6 +134,65 @@ setTimeout(() => {
         bsAlert.close();
     });
 }, 5000);
+
+// Dynamic Session Defaults
+const studentDefaults = {
+    {% for s in students %}
+        "{{ s.pk }}": { price: "{{ s.session_price|floatformat:2 }}", duration: "{{ s.session_duration }}" }{% if not forloop.last %},{% endif %}
+    {% endfor %}
+};
+
+let scheduleCount = 1;
+function addScheduleRow() {
+    const container = document.getElementById('schedule-rows');
+    const row = document.createElement('div');
+    row.className = 'row mb-2';
+    row.innerHTML = `
+        <div class="col-6">
+            <select name="schedule_day_${scheduleCount}" class="form-select">
+                <option value="5">Saturday</option>
+                <option value="6">Sunday</option>
+                <option value="0">Monday</option>
+                <option value="1">Tuesday</option>
+                <option value="2">Wednesday</option>
+                <option value="3">Thursday</option>
+                <option value="4">Friday</option>
+            </select>
+        </div>
+        <div class="col-6">
+            <input type="time" name="schedule_time_${scheduleCount}" class="form-control" required>
+        </div>
+    `;
+    container.appendChild(row);
+    scheduleCount++;
+}
+
+document.addEventListener("DOMContentLoaded", function() {
+    const studentSelect = document.getElementById('id_student');
+    const priceInput = document.getElementById('id_price');
+    const durationInput = document.getElementById('id_duration');
+
+    if(studentSelect) {
+        function updateDefaults() {
+            const val = studentSelect.value;
+            if(val && studentDefaults[val]) {
+                if(priceInput && !priceInput.value) priceInput.value = studentDefaults[val].price;
+                if(durationInput && !durationInput.value) durationInput.value = studentDefaults[val].duration;
+            }
+        }
+        
+        studentSelect.addEventListener('change', function() {
+            const val = this.value;
+            if(val && studentDefaults[val]) {
+                if(priceInput) priceInput.value = studentDefaults[val].price;
+                if(durationInput) durationInput.value = studentDefaults[val].duration;
+            }
+        });
+        
+        // Initial trigger to populate empty fields
+        updateDefaults();
+    }
+});
 </script>
 {% block extra_js %}{% endblock %}
 </body>

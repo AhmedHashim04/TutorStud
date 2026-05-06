@@ -26,162 +26,131 @@
         </div>
     </div>
 
-    <!-- Today's Timeline -->
-    <div class="card shadow-sm mb-4">
-        <div class="card-header bg-white d-flex justify-content-between align-items-center">
-            <h4 class="mb-0">{% trans "Today's Sessions" %}</h4>
-            <form action="{% url 'scheduler:generate_sessions' %}" method="post" class="m-0">
-                {% csrf_token %}
-                <button type="submit" class="btn btn-sm btn-outline-primary"><i class="fas fa-sync-alt me-1"></i>{% trans "Generate Next 4 Weeks" %}</button>
-            </form>
+    <div class="row">
+        <div class="col-md-8">
+            <!-- Today's Timeline -->
+            <div class="card shadow-sm mb-4">
+                <div class="card-header bg-white d-flex justify-content-between align-items-center">
+                    <h4 class="mb-0">{% trans "Today's Sessions" %}</h4>
+                    <form action="{% url 'scheduler:generate_sessions' %}" method="post" class="m-0">
+                        {% csrf_token %}
+                        <button type="submit" class="btn btn-sm btn-outline-primary"><i class="fas fa-sync-alt me-1"></i>{% trans "Generate Next 4 Weeks" %}</button>
+                    </form>
+                </div>
+                <div class="card-body p-0">
+                    {% if sessions %}
+                        <div class="list-group list-group-flush">
+                        {% for session in sessions %}
+                            <div class="list-group-item d-flex justify-content-between align-items-center p-3">
+                                <div>
+                                    <h5 class="mb-1 fw-bold">
+                                        <a href="{% url 'scheduler:student_detail' session.student.pk %}" class="text-decoration-none text-dark">{{ session.student.name }}</a>
+                                    </h5>
+                                    
+                                    <!-- DUAL TIMEZONE RENDERING -->
+                                    <div class="d-flex align-items-center gap-3 mt-2 mb-2">
+                                        <div class="bg-light px-2 py-1 rounded">
+                                            <small class="text-muted d-block" style="font-size: 0.7rem;">🇪🇬 MY TIME</small>
+                                            <strong>{{ session.tutor_time|time:"g:i A" }}</strong>
+                                        </div>
+                                        <i class="fas fa-arrow-right text-muted" style="font-size: 0.8rem;"></i>
+                                        <div class="bg-light px-2 py-1 rounded border-start border-primary border-3">
+                                            <small class="text-muted d-block" style="font-size: 0.7rem;">STUDENT ({{ session.student.get_country_display|slice:":2" }})</small>
+                                            <strong>{{ session.student_time|time:"g:i A" }}</strong>
+                                        </div>
+                                    </div>
+                                    
+                                    {% if session.status == 'scheduled' %}
+                                        <span class="badge bg-secondary">Scheduled</span>
+                                    {% elif session.status == 'attended' %}
+                                        <span class="badge bg-success">Attended</span>
+                                    {% elif session.status == 'absent' %}
+                                        <span class="badge bg-danger">No-Show</span>
+                                    {% elif session.status == 'excused' %}
+                                        <span class="badge bg-warning">Excused</span>
+                                    {% else %}
+                                        <span class="badge bg-dark">Cancelled</span>
+                                    {% endif %}
+                                </div>
+                                
+                                <!-- 1-Click Fast Actions -->
+                                <div class="d-flex flex-column gap-2">
+                                    <form action="{% url 'scheduler:update_session_status' session.pk %}" method="post" class="m-0">
+                                        {% csrf_token %}
+                                        <input type="hidden" name="status" value="attended">
+                                        <button type="submit" class="btn btn-outline-success btn-sm w-100 text-start" {% if session.status == 'attended' %}disabled{% endif %}><i class="fas fa-check me-2"></i>Attended</button>
+                                    </form>
+                                    
+                                    <form action="{% url 'scheduler:update_session_status' session.pk %}" method="post" class="m-0">
+                                        {% csrf_token %}
+                                        <input type="hidden" name="status" value="absent">
+                                        <button type="submit" class="btn btn-outline-danger btn-sm w-100 text-start" {% if session.status == 'absent' %}disabled{% endif %}><i class="fas fa-times me-2"></i>No-Show</button>
+                                    </form>
+                                    
+                                    <form action="{% url 'scheduler:update_session_status' session.pk %}" method="post" class="m-0">
+                                        {% csrf_token %}
+                                        <input type="hidden" name="status" value="excused">
+                                        <button type="submit" class="btn btn-outline-warning btn-sm w-100 text-start" {% if session.status == 'excused' %}disabled{% endif %}><i class="fas fa-comment-slash me-2"></i>Excused</button>
+                                    </form>
+                                </div>
+                            </div>
+                        {% endfor %}
+                        </div>
+                    {% else %}
+                        <div class="p-5 text-center text-muted">
+                            <i class="fas fa-mug-hot fa-3x mb-3 text-secondary"></i>
+                            <h5>{% trans "No sessions scheduled for today!" %}</h5>
+                        </div>
+                    {% endif %}
+                </div>
+            </div>
         </div>
-        <div class="card-body p-0">
-            {% if sessions %}
-                <div class="list-group list-group-flush">
-                {% for session in sessions %}
-                    <div class="list-group-item d-flex justify-content-between align-items-center p-3">
-                        <div>
-                            <h5 class="mb-1 fw-bold">{{ session.start_time|time:"g:i A" }} - {{ session.student.name }}</h5>
-                            <small class="text-muted">{{ session.duration }} mins • ${{ session.price }}</small>
-                            {% if session.status == 'scheduled' %}
-                                <span class="badge bg-secondary ms-2">Scheduled</span>
-                            {% elif session.status == 'attended' %}
-                                <span class="badge bg-success ms-2">Attended</span>
-                            {% elif session.status == 'absent' %}
-                                <span class="badge bg-danger ms-2">No-Show</span>
-                            {% elif session.status == 'excused' %}
-                                <span class="badge bg-warning ms-2">Excused</span>
-                            {% else %}
-                                <span class="badge bg-dark ms-2">Cancelled</span>
-                            {% endif %}
+        
+        <div class="col-md-4">
+            <!-- Upcoming Sessions Mini-List -->
+            <div class="card shadow-sm mb-4">
+                <div class="card-header bg-white">
+                    <h5 class="mb-0">{% trans "Upcoming (Next 3 Days)" %}</h5>
+                </div>
+                <div class="card-body p-0">
+                    {% if upcoming_sessions %}
+                        <div class="list-group list-group-flush">
+                        {% for session in upcoming_sessions %}
+                            <div class="list-group-item p-3">
+                                <strong>{{ session.start_time|date:"D, M j" }}</strong>
+                                <div class="mt-1 d-flex justify-content-between align-items-center">
+                                    <span>{{ session.student.name }}</span>
+                                    <small class="text-muted">{{ session.tutor_time|time:"g:i A" }} 🇪🇬</small>
+                                </div>
+                            </div>
+                        {% endfor %}
                         </div>
-                        
-                        <!-- 1-Click Fast Actions -->
-                        <div class="d-flex gap-2">
-                            <form action="{% url 'scheduler:update_session_status' session.pk %}" method="post" class="m-0">
-                                {% csrf_token %}
-                                <input type="hidden" name="status" value="attended">
-                                <button type="submit" class="btn btn-outline-success btn-sm" {% if session.status == 'attended' %}disabled{% endif %}><i class="fas fa-check me-1"></i>Attended</button>
-                            </form>
-                            
-                            <form action="{% url 'scheduler:update_session_status' session.pk %}" method="post" class="m-0">
-                                {% csrf_token %}
-                                <input type="hidden" name="status" value="absent">
-                                <button type="submit" class="btn btn-outline-danger btn-sm" {% if session.status == 'absent' %}disabled{% endif %}><i class="fas fa-times me-1"></i>No-Show</button>
-                            </form>
-                            
-                            <form action="{% url 'scheduler:update_session_status' session.pk %}" method="post" class="m-0">
-                                {% csrf_token %}
-                                <input type="hidden" name="status" value="excused">
-                                <button type="submit" class="btn btn-outline-warning btn-sm" {% if session.status == 'excused' %}disabled{% endif %}><i class="fas fa-comment-slash me-1"></i>Excused</button>
-                            </form>
+                    {% else %}
+                        <div class="p-4 text-center text-muted">
+                            <small>{% trans "Nothing scheduled." %}</small>
                         </div>
+                    {% endif %}
+                </div>
+            </div>
+            
+            <!-- Quick Top Students -->
+            <div class="card shadow-sm">
+                <div class="card-header bg-white">
+                    <h5 class="mb-0">{% trans "Active Roster" %}</h5>
+                </div>
+                <div class="card-body p-0">
+                    <div class="list-group list-group-flush">
+                    {% for s in students|slice:":5" %}
+                        <a href="{% url 'scheduler:student_detail' s.pk %}" class="list-group-item list-group-item-action d-flex justify-content-between align-items-center">
+                            {{ s.name }}
+                            <span class="badge bg-light text-dark border">{{ s.attendance_rate }}% Att</span>
+                        </a>
+                    {% endfor %}
                     </div>
-                {% endfor %}
                 </div>
-            {% else %}
-                <div class="p-5 text-center text-muted">
-                    <i class="fas fa-mug-hot fa-3x mb-3 text-secondary"></i>
-                    <h5>{% trans "No sessions scheduled for today!" %}</h5>
-                </div>
-            {% endif %}
+            </div>
         </div>
     </div>
 </div>
 
-<!-- Add Student Modal -->
-<div class="modal fade" id="addStudentModal" tabindex="-1" aria-hidden="true">
-  <div class="modal-dialog">
-    <div class="modal-content">
-      <div class="modal-header">
-        <h5 class="modal-title">{% trans "Add Student (Fast Setup)" %}</h5>
-        <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
-      </div>
-      <form action="{% url 'scheduler:add_student' %}" method="post">
-          <div class="modal-body">
-              {% csrf_token %}
-              {{ student_form.as_p }}
-              
-              <hr>
-              <h6>{% trans "Recurring Schedule" %}</h6>
-              <div id="schedule-rows">
-                  <div class="row mb-2">
-                      <div class="col-6">
-                          <select name="schedule_day_0" class="form-select">
-                              <option value="5">Saturday</option>
-                              <option value="6">Sunday</option>
-                              <option value="0">Monday</option>
-                              <option value="1">Tuesday</option>
-                              <option value="2">Wednesday</option>
-                              <option value="3">Thursday</option>
-                              <option value="4">Friday</option>
-                          </select>
-                      </div>
-                      <div class="col-6">
-                          <input type="time" name="schedule_time_0" class="form-control" required>
-                      </div>
-                  </div>
-              </div>
-              <button type="button" class="btn btn-sm btn-link" onclick="addScheduleRow()">+ Add Another Day</button>
-          </div>
-          <div class="modal-footer">
-            <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Close</button>
-            <button type="submit" class="btn btn-primary">Save & Generate</button>
-          </div>
-      </form>
-    </div>
-  </div>
-</div>
-
-<!-- Add Manual Session Modal -->
-<div class="modal fade" id="addSessionModal" tabindex="-1" aria-hidden="true">
-  <div class="modal-dialog">
-    <div class="modal-content">
-      <div class="modal-header">
-        <h5 class="modal-title">{% trans "Drop Manual Session" %}</h5>
-        <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
-      </div>
-      <form action="{% url 'scheduler:add_session' %}" method="post">
-          <div class="modal-body">
-              {% csrf_token %}
-              {{ session_form.as_p }}
-          </div>
-          <div class="modal-footer">
-            <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Close</button>
-            <button type="submit" class="btn btn-primary">Add to Calendar</button>
-          </div>
-      </form>
-    </div>
-  </div>
-</div>
-
-{% endblock %}
-
-{% block extra_js %}
-<script>
-    let scheduleCount = 1;
-    function addScheduleRow() {
-        const container = document.getElementById('schedule-rows');
-        const row = document.createElement('div');
-        row.className = 'row mb-2';
-        row.innerHTML = `
-            <div class="col-6">
-                <select name="schedule_day_${scheduleCount}" class="form-select">
-                    <option value="5">Saturday</option>
-                    <option value="6">Sunday</option>
-                    <option value="0">Monday</option>
-                    <option value="1">Tuesday</option>
-                    <option value="2">Wednesday</option>
-                    <option value="3">Thursday</option>
-                    <option value="4">Friday</option>
-                </select>
-            </div>
-            <div class="col-6">
-                <input type="time" name="schedule_time_${scheduleCount}" class="form-control" required>
-            </div>
-        `;
-        container.appendChild(row);
-        scheduleCount++;
-    }
-</script>
 {% endblock %}
