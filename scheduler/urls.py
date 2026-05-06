@@ -44,6 +44,7 @@ urlpatterns = [
     path('settings/exceptions/', views.exception_days, name='exception_days'),
     path('settings/exceptions/<int:pk>/delete/', views.exception_day_delete, name='exception_day_delete'),
     path('settings/prayer-times/', views.prayer_times, name='prayer_times'),
+    path('api/prayer-times/', views.api_prayer_times, name='api_prayer_times'),
     path('settings/prayer-times/<int:pk>/delete/', views.prayer_time_delete, name='prayer_time_delete'),
 
     # Reports & Analytics

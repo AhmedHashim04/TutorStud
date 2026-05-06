@@ -4,6 +4,8 @@ from django.utils.translation import gettext_lazy as _
 
 from .models import Student, Subscription, Session, RecurringSchedule, WorkingHours, ExceptionDay, PrayerTime, DEFAULT_HOURLY_RATE, WEEKDAYS
 
+PRAYER_TIME_FIELDS = ['fajr', 'dhuhr', 'asr', 'maghrib', 'isha']
+
 COUNTRY_TIMEZONE_MAP = {
     'Egypt': 'Africa/Cairo',
     'Germany': 'Europe/Berlin',
@@ -181,6 +183,28 @@ class PrayerTimeForm(forms.ModelForm):
         model = PrayerTime
         fields = ['date', 'prayer', 'adhan_time']
         widgets = {'date': forms.DateInput(attrs={'type': 'date'}), 'adhan_time': forms.TimeInput(attrs={'type': 'time'})}
+
+
+class PrayerTimesDayForm(forms.Form):
+    date = forms.DateField(
+        widget=forms.DateInput(attrs={'type': 'date', 'class': 'form-control form-control-lg'}),
+        label=_('Date'),
+    )
+    fajr = forms.TimeField(widget=forms.TimeInput(attrs={'type': 'time', 'class': 'form-control form-control-lg'}), label=_('Fajr'))
+    dhuhr = forms.TimeField(widget=forms.TimeInput(attrs={'type': 'time', 'class': 'form-control form-control-lg'}), label=_('Dhuhr'))
+    asr = forms.TimeField(widget=forms.TimeInput(attrs={'type': 'time', 'class': 'form-control form-control-lg'}), label=_('Asr'))
+    maghrib = forms.TimeField(widget=forms.TimeInput(attrs={'type': 'time', 'class': 'form-control form-control-lg'}), label=_('Maghrib'))
+    isha = forms.TimeField(widget=forms.TimeInput(attrs={'type': 'time', 'class': 'form-control form-control-lg'}), label=_('Isha'))
+
+    def __init__(self, *args, **kwargs):
+        initial_times = kwargs.pop('initial_times', None) or {}
+        super().__init__(*args, **kwargs)
+        for field_name in PRAYER_TIME_FIELDS:
+            field = self.fields[field_name]
+            field.required = True
+            value = initial_times.get(field_name)
+            if value:
+                self.initial.setdefault(field_name, value)
 
 class DateRangeForm(forms.Form):
     start_date = forms.DateField(widget=forms.DateInput(attrs={'type': 'date'}), required=False, label=_('From'))

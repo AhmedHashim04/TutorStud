@@ -21,8 +21,8 @@ from django.utils.translation import gettext as _
 from .models import Student, Subscription, Session, RecurringSchedule, WorkingHours, ExceptionDay, PrayerTime, DEFAULT_HOURLY_RATE
 from .forms import (
     StudentForm, SubscriptionForm, SessionForm, QuickSessionForm,
-    RecurringScheduleForm, WorkingHoursForm, ExceptionDayForm, PrayerTimeForm,
-    DateRangeForm, SessionStatusForm, COUNTRY_TIMEZONE_MAP,
+    RecurringScheduleForm, WorkingHoursForm, ExceptionDayForm,
+    DateRangeForm, SessionStatusForm, PrayerTimesDayForm, PRAYER_TIME_FIELDS, COUNTRY_TIMEZONE_MAP,
 )
 from .services import (
     validate_session, suggest_next_slot, quick_reschedule,
@@ -30,6 +30,7 @@ from .services import (
     to_cairo, to_student_tz, make_aware_cairo, ensure_aware, CAIRO_TZ,
     generate_sessions_from_schedule, preview_sessions_from_schedule,
     delete_future_recurring_sessions, regenerate_schedule,
+    fetch_prayer_times_for_date,
 )
 
 COUNTRY_FLAGS = {
@@ -484,16 +485,82 @@ def exception_day_delete(request, pk):
 
 
 def prayer_times(request):
+    selected_date = request.GET.get('date') or timezone.localdate()
+    if isinstance(selected_date, str):
+        try:
+            selected_date = datetime.strptime(selected_date, '%Y-%m-%d').date()
+        except ValueError:
+            selected_date = timezone.localdate()
+
     prayer_times_qs = PrayerTime.objects.all().order_by('date', 'adhan_time')
+    saved_times = {item.prayer: item.adhan_time for item in prayer_times_qs.filter(date=selected_date)}
+    fetched_times = {}
+    if not saved_times:
+        try:
+            fetched_times = fetch_prayer_times_for_date(selected_date)
+        except Exception:
+            fetched_times = {}
+
+    initial_times = {field: saved_times.get(field) or fetched_times.get(field) for field in PRAYER_TIME_FIELDS}
     if request.method == 'POST':
-        form = PrayerTimeForm(request.POST)
+        form = PrayerTimesDayForm(request.POST)
         if form.is_valid():
-            form.save()
-            messages.success(request, _('Prayer time saved.'))
-            return redirect('scheduler:prayer_times')
+            prayer_date = form.cleaned_data['date']
+            for prayer_name in PRAYER_TIME_FIELDS:
+                PrayerTime.objects.update_or_create(
+                    date=prayer_date,
+                    prayer=prayer_name,
+                    defaults={'adhan_time': form.cleaned_data[prayer_name]},
+                )
+            messages.success(request, _('Prayer times saved.'))
+            return redirect(f"{request.path}?date={prayer_date.isoformat()}")
+        posted_date = request.POST.get('date')
+        if posted_date:
+            try:
+                selected_date = datetime.strptime(posted_date, '%Y-%m-%d').date()
+            except ValueError:
+                pass
+        saved_times = {item.prayer: item.adhan_time for item in prayer_times_qs.filter(date=selected_date)}
+        fetched_times = {}
+        if not saved_times:
+            try:
+                fetched_times = fetch_prayer_times_for_date(selected_date)
+            except Exception:
+                fetched_times = {}
+        initial_times = {field: saved_times.get(field) or fetched_times.get(field) for field in PRAYER_TIME_FIELDS}
     else:
-        form = PrayerTimeForm()
-    return render(request, 'scheduler/prayer_times.html', {'prayer_times': prayer_times_qs, 'form': form})
+        form = PrayerTimesDayForm(initial={'date': selected_date, **initial_times}, initial_times=initial_times)
+    return render(request, 'scheduler/prayer_times.html', {
+        'prayer_times': prayer_times_qs,
+        'form': form,
+        'selected_date': selected_date,
+        'saved_times': saved_times,
+        'initial_times': initial_times,
+        'fetched_times': fetched_times,
+        'auto_loaded': bool(fetched_times),
+        'prayer_fields': PRAYER_TIME_FIELDS,
+    })
+
+
+def api_prayer_times(request):
+    date_str = request.GET.get('date')
+    if date_str:
+        try:
+            target_date = datetime.strptime(date_str, '%Y-%m-%d').date()
+        except ValueError:
+            return JsonResponse({'error': _('Invalid date.')}, status=400)
+    else:
+        target_date = timezone.localdate()
+
+    try:
+        prayer_times = fetch_prayer_times_for_date(target_date)
+    except Exception:
+        return JsonResponse({'error': _('Unable to fetch prayer times right now.')}, status=502)
+
+    return JsonResponse({
+        'date': target_date.strftime('%Y-%m-%d'),
+        'prayer_times': {name: prayer_times.get(name).strftime('%H:%M') if prayer_times.get(name) else '' for name in PRAYER_TIME_FIELDS},
+    })
 
 
 def prayer_time_delete(request, pk):

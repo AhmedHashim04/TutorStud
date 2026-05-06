@@ -1,77 +1,351 @@
 {% extends "base.html" %}
 {% load i18n %}
-{% block title %}Prayer Times{% endblock %}
-{% block page_title %}Prayer Times{% endblock %}
+{% block title %}{% trans "Prayer Times" %}{% endblock %}
+{% block page_title %}{% trans "Prayer Times" %}{% endblock %}
+
+{% block extra_css %}
+<style>
+.prayer-shell {
+    display: grid;
+    gap: 16px;
+}
+.prayer-intro {
+    display: flex;
+    flex-direction: column;
+    gap: 6px;
+}
+.prayer-intro h1 {
+    font-size: 28px;
+    font-weight: 800;
+    letter-spacing: -0.02em;
+}
+.prayer-intro p {
+    color: var(--text-muted);
+    max-width: 760px;
+}
+.prayer-banner {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 10px;
+    align-items: center;
+    justify-content: space-between;
+    background: linear-gradient(135deg, rgba(99,102,241,.12), rgba(139,92,246,.08));
+    border: 1px solid rgba(99,102,241,.16);
+    border-radius: 18px;
+    padding: 16px 18px;
+}
+.prayer-banner .meta {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 8px;
+    align-items: center;
+}
+.prayer-editor {
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: 22px;
+    box-shadow: var(--shadow);
+    overflow: hidden;
+}
+.prayer-editor .card-header,
+.prayer-summary .card-header {
+    padding: 18px 20px;
+    font-size: 15px;
+}
+.prayer-editor .card-body,
+.prayer-summary .card-body {
+    padding: 20px;
+}
+.prayer-note {
+    font-size: 12px;
+    color: var(--text-muted);
+    margin-top: 6px;
+}
+.prayer-form-grid {
+    display: grid;
+    gap: 14px;
+}
+.prayer-row {
+    display: grid;
+    grid-template-columns: 1fr minmax(180px, 220px);
+    gap: 14px;
+    align-items: end;
+    padding: 14px 16px;
+    border: 1px solid var(--border);
+    border-radius: 16px;
+    background: linear-gradient(180deg, rgba(255,255,255,.96), rgba(248,250,252,.98));
+}
+.prayer-row label {
+    font-weight: 700;
+    margin-bottom: 4px;
+}
+.prayer-row .form-control,
+.prayer-row .form-select,
+.prayer-row input[type="date"],
+.prayer-row input[type="time"] {
+    min-height: 48px;
+    border-radius: 12px;
+    border: 1px solid var(--border);
+    background: var(--surface);
+    box-shadow: inset 0 1px 2px rgba(15,23,42,.03);
+}
+.prayer-row .form-control:focus,
+.prayer-row .form-select:focus,
+.prayer-row input:focus {
+    border-color: var(--primary);
+    box-shadow: 0 0 0 4px rgba(99,102,241,.12);
+}
+.prayer-actions {
+    display: flex;
+    gap: 10px;
+    flex-wrap: wrap;
+}
+.prayer-status {
+    font-size: 13px;
+    color: var(--text-muted);
+}
+.prayer-summary-list {
+    display: grid;
+    gap: 10px;
+}
+.prayer-summary-item {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 12px;
+    padding: 12px 14px;
+    border: 1px solid var(--border);
+    border-radius: 14px;
+    background: var(--bg);
+}
+.prayer-summary-item .name {
+    font-weight: 700;
+}
+.prayer-summary-item .time {
+    font-variant-numeric: tabular-nums;
+    color: var(--text-muted);
+}
+@media (max-width: 768px) {
+    .prayer-row {
+        grid-template-columns: 1fr;
+    }
+}
+</style>
+{% endblock %}
 
 {% block content %}
-<div class="page-header">
-    <div>
+<div class="prayer-shell">
+    <div class="prayer-intro">
         <h1>{% trans "Prayer Times" %}</h1>
-        <p>{% trans "Cairo, Egypt — Sessions are blocked 10–25 min after each adhan" %}</p>
+        <p>{% trans "Load today's prayer times automatically, then correct any value manually before saving." %}</p>
     </div>
-</div>
 
-<div class="alert alert-info mb-4">
-    <i class="fas fa-mosque me-2"></i>
-    <strong>{% trans "Blocking rule:" %}</strong>{% trans "From adhan → +10 min is allowed (before iqama). From +10 → +25 min is blocked for scheduling." %}</div>
+    <div class="prayer-banner">
+        <div>
+            <div class="fw-bold">{% trans "Cairo, Egypt" %}</div>
+            <div class="prayer-status" id="prayer-status">
+                {% if auto_loaded %}{% trans "Prayer times loaded automatically from the API." %}{% elif saved_times %}{% trans "Existing saved times are shown below." %}{% else %}{% trans "Prayer times can be fetched automatically or entered manually." %}{% endif %}
+            </div>
+        </div>
+        <div class="meta">
+            <span class="badge bg-info text-dark">{% trans "10 min grace" %}</span>
+            <span class="badge bg-warning text-dark">{% trans "15 min blocked" %}</span>
+        </div>
+    </div>
 
-<div class="row g-4">
-    <div class="col-lg-5">
-        <div class="card">
-            <div class="card-header"><i class="fas fa-plus me-2 text-primary"></i>{% trans "Add Prayer Time" %}</div>
-            <div class="card-body">
-                <form method="post">
-                    {% csrf_token %}
-                    {% for field in form %}
-                    <div class="mb-3">
-                        <label class="form-label">{{ field.label }}</label>
-                        {{ field }}
-                        {% if field.errors %}<div class="text-danger mt-1" style="font-size:13px">{{ field.errors.0 }}</div>{% endif %}
+    <div class="row g-4">
+        <div class="col-lg-7">
+            <div class="prayer-editor card h-100">
+                <div class="card-header d-flex justify-content-between align-items-center flex-wrap gap-2">
+                    <span><i class="fas fa-mosque me-2 text-primary"></i>{% trans "Daily Prayer Editor" %}</span>
+                    <div class="prayer-actions">
+                        <button type="button" class="btn btn-outline-primary btn-sm" id="refresh-btn" onclick="refreshPrayerTimes()">
+                            <i class="fas fa-rotate me-1"></i>{% trans "Fetch From API" %}
+                        </button>
                     </div>
-                    {% endfor %}
-                    <button type="submit" class="btn btn-primary w-100">
-                        <i class="fas fa-save me-2"></i>{% trans "Save Prayer Time" %}</button>
-                </form>
+                </div>
+                <div class="card-body">
+                    <form method="post" id="prayer-form">
+                        {% csrf_token %}
+                        <div class="prayer-form-grid">
+                            <div class="prayer-row">
+                                <div>
+                                    <label class="form-label" for="{{ form.date.id_for_label }}">{{ form.date.label }}</label>
+                                    <div class="prayer-note">{% trans "Choose the day first, then refresh to load official times." %}</div>
+                                </div>
+                                <div>
+                                    {{ form.date }}
+                                    {% if form.date.errors %}<div class="text-danger mt-1" style="font-size:13px">{{ form.date.errors.0 }}</div>{% endif %}
+                                </div>
+                            </div>
+
+                            <div class="prayer-row">
+                                <div>
+                                    <label class="form-label" for="{{ form.fajr.id_for_label }}">{{ form.fajr.label }}</label>
+                                    <div class="prayer-note">{% trans "Edit the time if the fetched value is not correct." %}</div>
+                                </div>
+                                <div>
+                                    {{ form.fajr }}
+                                    {% if form.fajr.errors %}<div class="text-danger mt-1" style="font-size:13px">{{ form.fajr.errors.0 }}</div>{% endif %}
+                                </div>
+                            </div>
+
+                            <div class="prayer-row">
+                                <div>
+                                    <label class="form-label" for="{{ form.dhuhr.id_for_label }}">{{ form.dhuhr.label }}</label>
+                                    <div class="prayer-note">{% trans "Edit the time if the fetched value is not correct." %}</div>
+                                </div>
+                                <div>
+                                    {{ form.dhuhr }}
+                                    {% if form.dhuhr.errors %}<div class="text-danger mt-1" style="font-size:13px">{{ form.dhuhr.errors.0 }}</div>{% endif %}
+                                </div>
+                            </div>
+
+                            <div class="prayer-row">
+                                <div>
+                                    <label class="form-label" for="{{ form.asr.id_for_label }}">{{ form.asr.label }}</label>
+                                    <div class="prayer-note">{% trans "Edit the time if the fetched value is not correct." %}</div>
+                                </div>
+                                <div>
+                                    {{ form.asr }}
+                                    {% if form.asr.errors %}<div class="text-danger mt-1" style="font-size:13px">{{ form.asr.errors.0 }}</div>{% endif %}
+                                </div>
+                            </div>
+
+                            <div class="prayer-row">
+                                <div>
+                                    <label class="form-label" for="{{ form.maghrib.id_for_label }}">{{ form.maghrib.label }}</label>
+                                    <div class="prayer-note">{% trans "Edit the time if the fetched value is not correct." %}</div>
+                                </div>
+                                <div>
+                                    {{ form.maghrib }}
+                                    {% if form.maghrib.errors %}<div class="text-danger mt-1" style="font-size:13px">{{ form.maghrib.errors.0 }}</div>{% endif %}
+                                </div>
+                            </div>
+
+                            <div class="prayer-row">
+                                <div>
+                                    <label class="form-label" for="{{ form.isha.id_for_label }}">{{ form.isha.label }}</label>
+                                    <div class="prayer-note">{% trans "Edit the time if the fetched value is not correct." %}</div>
+                                </div>
+                                <div>
+                                    {{ form.isha }}
+                                    {% if form.isha.errors %}<div class="text-danger mt-1" style="font-size:13px">{{ form.isha.errors.0 }}</div>{% endif %}
+                                </div>
+                            </div>
+                        </div>
+
+                        {% if form.non_field_errors %}
+                        <div class="alert alert-danger mt-3 mb-0">{{ form.non_field_errors.0 }}</div>
+                        {% endif %}
+
+                        <div class="d-flex gap-2 mt-4 flex-wrap">
+                            <button type="submit" class="btn btn-primary">
+                                <i class="fas fa-save me-2"></i>{% trans "Save Prayer Times" %}
+                            </button>
+                            <button type="button" class="btn btn-outline-secondary" onclick="refreshPrayerTimes()">
+                                <i class="fas fa-sparkles me-2"></i>{% trans "Refresh Times" %}
+                            </button>
+                        </div>
+                    </form>
+                </div>
             </div>
         </div>
-    </div>
 
-    <div class="col-lg-7">
-        <div class="card">
-            <div class="card-header"><i class="fas fa-clock me-2"></i>{% trans "Saved Prayer Times" %}</div>
-            <div class="card-body p-0">
-                {% if prayers %}
-                <table class="table">
-                    <thead><tr><th>{% trans "Date" %}</th><th>{% trans "Prayer" %}</th><th>{% trans "Adhan" %}</th><th>{% trans "Blocked Until" %}</th><th></th></tr></thead>
-                    <tbody>
-                        {% for p in prayers %}
-                        <tr>
-                            <td class="fw-semibold">{{ p.date|date:"M j, Y" }}</td>
-                            <td><span class="badge bg-light text-dark">{{ p.get_prayer_display }}</span></td>
-                            <td>{{ p.adhan_time|time:"H:i" }}</td>
-                            <td class="text-muted" style="font-size:13px">{% trans "~+10 to +25 min" %}</td>
-                            <td>
-                                <form method="post" action="{% url 'scheduler:prayer_time_delete' p.pk %}" style="display:inline">
-                                    {% csrf_token %}
-                                    <button type="submit" class="btn btn-sm btn-outline-danger btn-icon"
-                                        onclick="return confirm('Delete this prayer time?')">
-                                        <i class="fas fa-trash"></i>
-                                    </button>
-                                </form>
-                            </td>
-                        </tr>
-                        {% endfor %}
-                    </tbody>
-                </table>
-                {% else %}
-                <div class="empty-state">
-                    <i class="fas fa-mosque"></i>
-                    <h5>{% trans "No prayer times saved" %}</h5>
-                    <p>{% trans "Add prayer times to enable automatic blocking." %}</p>
+        <div class="col-lg-5">
+            <div class="prayer-summary card h-100">
+                <div class="card-header"><i class="fas fa-clock me-2"></i>{% trans "Saved Prayer Times" %}</div>
+                <div class="card-body">
+                    <div class="mb-3 d-flex justify-content-between align-items-center flex-wrap gap-2">
+                        <div>
+                            <div class="fw-bold">{{ selected_date|date:"F j, Y" }}</div>
+                            <div class="prayer-note">{% trans "These are the values currently stored for the selected day." %}</div>
+                        </div>
+                        <span class="badge bg-primary">{% trans "Editable" %}</span>
+                    </div>
+                    <div class="prayer-summary-list">
+                        <div class="prayer-summary-item"><span class="name">{% trans "Fajr" %}</span><span class="time" id="summary-fajr">{% if initial_times.fajr %}{{ initial_times.fajr|time:"H:i" }}{% else %}—{% endif %}</span></div>
+                        <div class="prayer-summary-item"><span class="name">{% trans "Dhuhr" %}</span><span class="time" id="summary-dhuhr">{% if initial_times.dhuhr %}{{ initial_times.dhuhr|time:"H:i" }}{% else %}—{% endif %}</span></div>
+                        <div class="prayer-summary-item"><span class="name">{% trans "Asr" %}</span><span class="time" id="summary-asr">{% if initial_times.asr %}{{ initial_times.asr|time:"H:i" }}{% else %}—{% endif %}</span></div>
+                        <div class="prayer-summary-item"><span class="name">{% trans "Maghrib" %}</span><span class="time" id="summary-maghrib">{% if initial_times.maghrib %}{{ initial_times.maghrib|time:"H:i" }}{% else %}—{% endif %}</span></div>
+                        <div class="prayer-summary-item"><span class="name">{% trans "Isha" %}</span><span class="time" id="summary-isha">{% if initial_times.isha %}{{ initial_times.isha|time:"H:i" }}{% else %}—{% endif %}</span></div>
+                    </div>
+                    <div class="alert alert-info mt-4 mb-0" style="font-size:13px">
+                        <i class="fas fa-circle-info me-2"></i>{% trans "If the automatic values are off, edit the fields above and save. The system will use your manual times." %}
+                    </div>
                 </div>
-                {% endif %}
             </div>
         </div>
     </div>
 </div>
+{% endblock %}
+
+{% block extra_js %}
+<script>
+const prayerApiUrl = "{% url 'scheduler:api_prayer_times' %}";
+const prayerNames = ['fajr', 'dhuhr', 'asr', 'maghrib', 'isha'];
+const dateInput = document.getElementById('id_date');
+const statusEl = document.getElementById('prayer-status');
+const refreshBtn = document.getElementById('refresh-btn');
+
+function normalizeTime(value) {
+    if (!value) return '';
+    return value.length > 5 ? value.slice(0, 5) : value;
+}
+
+function setPrayerSummary(times) {
+    prayerNames.forEach((name) => {
+        const el = document.getElementById(`summary-${name}`);
+        if (el) {
+            el.textContent = times[name] ? normalizeTime(times[name]) : '—';
+        }
+    });
+}
+
+function setPrayerFields(times) {
+    prayerNames.forEach((name) => {
+        const field = document.getElementById(`id_${name}`);
+        if (field && times[name]) {
+            field.value = normalizeTime(times[name]);
+        }
+    });
+    setPrayerSummary(times);
+}
+
+function refreshPrayerTimes() {
+    if (!dateInput || !dateInput.value) return;
+    statusEl.textContent = '{% trans "Fetching prayer times..." %}';
+    if (refreshBtn) refreshBtn.disabled = true;
+
+    fetch(`${prayerApiUrl}?date=${encodeURIComponent(dateInput.value)}`)
+        .then((response) => response.json().then((data) => ({ ok: response.ok, data })))
+        .then(({ ok, data }) => {
+            if (!ok || data.error) {
+                statusEl.textContent = data.error || '{% trans "Unable to fetch automatically. Edit manually if needed." %}';
+                return;
+            }
+            setPrayerFields(data.prayer_times || {});
+            statusEl.textContent = '{% trans "Prayer times loaded automatically from the API." %}';
+        })
+        .catch(() => {
+            statusEl.textContent = '{% trans "Unable to fetch automatically. Edit manually if needed." %}';
+        })
+        .finally(() => {
+            if (refreshBtn) refreshBtn.disabled = false;
+        });
+}
+
+if (dateInput) {
+    dateInput.addEventListener('change', refreshPrayerTimes);
+}
+
+const autoLoaded = {{ auto_loaded|yesno:"true,false" }};
+if (!autoLoaded) {
+    document.addEventListener('DOMContentLoaded', () => {
+        if (dateInput && dateInput.value) {
+            refreshPrayerTimes();
+        }
+    });
+}
+</script>
 {% endblock %}

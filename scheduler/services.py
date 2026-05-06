@@ -26,9 +26,19 @@ from datetime import datetime, timedelta, time
 from django.utils import timezone
 from django.conf import settings
 import pytz
+import re
+import requests
 
 # Tutor is always based in Cairo
 CAIRO_TZ = pytz.timezone('Africa/Cairo')
+
+PRAYER_TIME_FIELD_MAP = {
+    'fajr': 'Fajr',
+    'dhuhr': 'Dhuhr',
+    'asr': 'Asr',
+    'maghrib': 'Maghrib',
+    'isha': 'Isha',
+}
 
 
 # ─── Timezone Helpers ────────────────────────────────────────────────────────
@@ -61,6 +71,31 @@ def ensure_aware(dt, default_tz=CAIRO_TZ):
     if timezone.is_naive(dt):
         return default_tz.localize(dt)
     return dt
+
+
+def _parse_api_time(value):
+    if not value:
+        return None
+    match = re.search(r'(\d{1,2}):(\d{2})', str(value))
+    if not match:
+        return None
+    hour, minute = map(int, match.groups())
+    return time(hour=hour, minute=minute)
+
+
+def fetch_prayer_times_for_date(target_date, city='Cairo', country='Egypt', method=5):
+    """Fetch Cairo prayer times for a specific date and normalize them to time objects."""
+    date_str = target_date.strftime('%d-%m-%Y')
+    url = f'https://api.aladhan.com/v1/timingsByCity/{date_str}'
+    response = requests.get(url, params={'city': city, 'country': country, 'method': method}, timeout=10)
+    response.raise_for_status()
+    payload = response.json()
+    timings = payload.get('data', {}).get('timings', {})
+
+    prayer_times = {}
+    for field_name, api_name in PRAYER_TIME_FIELD_MAP.items():
+        prayer_times[field_name] = _parse_api_time(timings.get(api_name))
+    return prayer_times
 
 
 # ─── Overlap Detection ───────────────────────────────────────────────────────
