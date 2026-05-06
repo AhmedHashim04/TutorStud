@@ -1,6 +1,6 @@
 {% load i18n %}
 <!DOCTYPE html>
-<html lang="en">
+<html lang="{{ LANGUAGE_CODE }}" dir="{% if LANGUAGE_BIDI %}rtl{% else %}ltr{% endif %}">
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
@@ -43,8 +43,8 @@
                 {% csrf_token %}
                 <input type="hidden" name="next" value="{{ request.get_full_path }}">
                 <select name="language" class="form-select form-select-sm" onchange="this.form.submit()">
-                    <option value="en" {% if LANGUAGE_CODE == 'en' %}selected{% endif %}>English</option>
-                    <option value="ar" {% if LANGUAGE_CODE == 'ar' %}selected{% endif %}>العربية</option>
+                    <option value="en" {% if LANGUAGE_CODE == 'en' or LANGUAGE_CODE|slice:":2" == 'en' %}selected{% endif %}>English</option>
+                    <option value="ar" {% if LANGUAGE_CODE == 'ar' or LANGUAGE_CODE|slice:":2" == 'ar' %}selected{% endif %}>العربية</option>
                 </select>
             </form>
             <a href="{% url 'scheduler:session_create' %}?suggest=1" class="btn btn-primary btn-sm"><i class="fas fa-plus me-1"></i>{% trans "New Session" %}</a>

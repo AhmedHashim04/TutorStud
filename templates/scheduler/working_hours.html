@@ -1,4 +1,5 @@
 {% extends "base.html" %}
+{% load i18n %}
 {% block title %}Working Hours{% endblock %}
 {% block page_title %}Working Hours{% endblock %}
 
@@ -29,13 +30,13 @@
 {% block content %}
 <div class="page-header">
     <div>
-        <h1>Working Hours</h1>
-        <p>Set your available teaching hours for each day</p>
+        <h1>{% trans "Working Hours" %}</h1>
+        <p>{% trans "Set your available teaching hours for each day" %}</p>
     </div>
 </div>
 
 <div class="card">
-    <div class="card-header"><i class="fas fa-business-time me-2 text-primary"></i>Weekly Schedule</div>
+    <div class="card-header"><i class="fas fa-business-time me-2 text-primary"></i>{% trans "Weekly Schedule" %}</div>
     <div class="card-body">
         <form method="post">
             {% csrf_token %}
@@ -50,13 +51,13 @@
                                     id="working_{{ day.weekday }}"
                                     {% if day.wh and day.wh.is_working %}checked{% endif %}
                                     onchange="toggleDay({{ day.weekday }}, this.checked)">
-                                <label class="form-check-label" for="working_{{ day.weekday }}">Working</label>
+                                <label class="form-check-label" for="working_{{ day.weekday }}">{% trans "Working" %}</label>
                             </div>
                             <div class="d-flex align-items-center gap-2 day-times-{{ day.weekday }}" {% if not day.wh or not day.wh.is_working %}style="opacity:.4;pointer-events:none"{% endif %}>
-                                <span class="text-muted" style="font-size:13px">From</span>
+                                <span class="text-muted" style="font-size:13px">{% trans "From" %}</span>
                                 <input type="time" name="day_{{ day.weekday }}_start" class="form-control form-control-sm" style="width:132px"
                                     value="{{ day.wh.start_time|time:'H:i'|default:'09:00' }}">
-                                <span class="text-muted" style="font-size:13px">To</span>
+                                <span class="text-muted" style="font-size:13px">{% trans "To" %}</span>
                                 <input type="time" name="day_{{ day.weekday }}_end" class="form-control form-control-sm" style="width:132px"
                                     value="{{ day.wh.end_time|time:'H:i'|default:'17:00' }}">
                             </div>
@@ -66,8 +67,7 @@
                 {% endfor %}
             </div>
             <button type="submit" class="btn btn-primary mt-4">
-                <i class="fas fa-save me-2"></i>Save Working Hours
-            </button>
+                <i class="fas fa-save me-2"></i>{% trans "Save Working Hours" %}</button>
         </form>
     </div>
 </div>

@@ -1,4 +1,5 @@
 {% extends "base.html" %}
+{% load i18n %}
 {% block title %}Calendar{% endblock %}
 {% block page_title %}Calendar{% endblock %}
 
@@ -9,26 +10,24 @@
 {% block content %}
 <div class="page-header">
     <div>
-        <h1>Session Calendar</h1>
-        <p>All times shown in Cairo timezone (Africa/Cairo, UTC+2/+3)</p>
+        <h1>{% trans "Session Calendar" %}</h1>
+        <p>{% trans "All times shown in Cairo timezone (Africa/Cairo, UTC+2/+3)" %}</p>
     </div>
     <div class="d-flex gap-2">
         <button class="btn btn-outline-secondary btn-sm" data-bs-toggle="modal" data-bs-target="#suggestModal">
-            <i class="fas fa-magic me-1"></i>Find Slot
-        </button>
+            <i class="fas fa-magic me-1"></i>{% trans "Find Slot" %}</button>
         <a href="{% url 'scheduler:session_create' %}" class="btn btn-primary btn-sm">
-            <i class="fas fa-plus me-1"></i>New Session
-        </a>
+            <i class="fas fa-plus me-1"></i>{% trans "New Session" %}</a>
     </div>
 </div>
 
 <!-- Legend -->
 <div class="d-flex gap-3 mb-3 flex-wrap align-items-center">
-    <span style="font-size:12px;font-weight:600;color:var(--text-muted)">Legend:</span>
-    <div class="d-flex align-items-center gap-2"><span style="width:14px;height:14px;border-radius:4px;background:#3b82f6;display:inline-block"></span><span style="font-size:13px">Scheduled</span></div>
-    <div class="d-flex align-items-center gap-2"><span style="width:14px;height:14px;border-radius:4px;background:#10b981;display:inline-block"></span><span style="font-size:13px">Completed</span></div>
-    <div class="d-flex align-items-center gap-2"><span style="width:14px;height:14px;border-radius:4px;background:#ef4444;display:inline-block"></span><span style="font-size:13px">Cancelled</span></div>
-    <div class="d-flex align-items-center gap-2"><span style="width:14px;height:14px;border-radius:4px;background:#f59e0b;display:inline-block"></span><span style="font-size:13px">Missed</span></div>
+    <span style="font-size:12px;font-weight:600;color:var(--text-muted)">{% trans "Legend:" %}</span>
+    <div class="d-flex align-items-center gap-2"><span style="width:14px;height:14px;border-radius:4px;background:#3b82f6;display:inline-block"></span><span style="font-size:13px">{% trans "Scheduled" %}</span></div>
+    <div class="d-flex align-items-center gap-2"><span style="width:14px;height:14px;border-radius:4px;background:#10b981;display:inline-block"></span><span style="font-size:13px">{% trans "Completed" %}</span></div>
+    <div class="d-flex align-items-center gap-2"><span style="width:14px;height:14px;border-radius:4px;background:#ef4444;display:inline-block"></span><span style="font-size:13px">{% trans "Cancelled" %}</span></div>
+    <div class="d-flex align-items-center gap-2"><span style="width:14px;height:14px;border-radius:4px;background:#f59e0b;display:inline-block"></span><span style="font-size:13px">{% trans "Missed" %}</span></div>
 </div>
 
 <div class="card">
@@ -42,15 +41,14 @@
     <div class="modal-dialog">
         <div class="modal-content" style="border-radius:12px;border:none">
             <div class="modal-header border-0 pb-0">
-                <h5 class="modal-title fw-bold" id="modal-title">Session Details</h5>
+                <h5 class="modal-title fw-bold" id="modal-title">{% trans "Session Details" %}</h5>
                 <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
             </div>
             <div class="modal-body" id="modal-body"></div>
             <div class="modal-footer border-0 pt-0">
                 <a id="modal-view-btn" href="#" class="btn btn-primary btn-sm">
-                    <i class="fas fa-eye me-1"></i>View Details
-                </a>
-                <button type="button" class="btn btn-outline-secondary btn-sm" data-bs-dismiss="modal">Close</button>
+                    <i class="fas fa-eye me-1"></i>{% trans "View Details" %}</a>
+                <button type="button" class="btn btn-outline-secondary btn-sm" data-bs-dismiss="modal">{% trans "Close" %}</button>
             </div>
         </div>
     </div>
@@ -61,24 +59,23 @@
     <div class="modal-dialog">
         <div class="modal-content" style="border-radius:12px;border:none">
             <div class="modal-header border-0 pb-0">
-                <h5 class="modal-title fw-bold"><i class="fas fa-magic me-2 text-primary"></i>Find Next Available Slot</h5>
+                <h5 class="modal-title fw-bold"><i class="fas fa-magic me-2 text-primary"></i>{% trans "Find Next Available Slot" %}</h5>
                 <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
             </div>
             <div class="modal-body">
                 <div class="mb-3">
-                    <label class="form-label">Session Duration</label>
+                    <label class="form-label">{% trans "Session Duration" %}</label>
                     <select id="suggest-duration" class="form-select">
-                        <option value="30">30 minutes</option>
-                        <option value="60" selected>60 minutes</option>
+                        <option value="30">{% trans "30 minutes" %}</option>
+                        <option value="60" selected>{% trans "60 minutes" %}</option>
                     </select>
                 </div>
                 <div class="mb-3">
-                    <label class="form-label">Search from (Cairo time)</label>
+                    <label class="form-label">{% trans "Search from (Cairo time)" %}</label>
                     <input type="datetime-local" id="suggest-from" class="form-control">
                 </div>
                 <button class="btn btn-primary w-100" onclick="findSlot()">
-                    <i class="fas fa-search me-2"></i>Find Slot
-                </button>
+                    <i class="fas fa-search me-2"></i>{% trans "Find Slot" %}</button>
                 <div id="suggest-result" class="mt-3" style="display:none"></div>
             </div>
         </div>

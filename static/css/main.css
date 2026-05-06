@@ -20,7 +20,11 @@
 }
 
 * { box-sizing: border-box; margin: 0; padding: 0; }
-body { font-family: 'Inter', sans-serif; background: var(--bg); color: var(--text); display: flex; min-height: 100vh; overflow-x: hidden; }
+body { font-family: 'Inter', sans-serif; background: var(--bg); color: var(--text); display: flex; flex-direction: row; min-height: 100vh; overflow-x: hidden; direction: ltr; }
+
+html[dir="rtl"] body {
+    direction: ltr;
+}
 
 /* ── Sidebar ── */
 .sidebar {
@@ -73,6 +77,51 @@ body { font-family: 'Inter', sans-serif; background: var(--bg); color: var(--tex
 /* ── Main wrapper ── */
 .main-wrapper { margin-left: var(--sidebar-width); flex: 1; display: flex; flex-direction: column; transition: margin-left .25s ease; min-width: 0; }
 .main-wrapper.expanded { margin-left: 64px; }
+
+html[dir="rtl"] .sidebar {
+    left: auto;
+    right: 0;
+    direction: rtl;
+}
+
+html[dir="rtl"] .main-wrapper {
+    margin-left: 0;
+    margin-right: var(--sidebar-width);
+    direction: rtl;
+}
+
+html[dir="rtl"] .main-wrapper.expanded {
+    margin-left: 0;
+    margin-right: 64px;
+}
+
+html[dir="rtl"] .topbar-actions {
+    flex-direction: row-reverse;
+}
+
+html[dir="rtl"] .page-header,
+html[dir="rtl"] .card-header,
+html[dir="rtl"] .session-item,
+html[dir="rtl"] .stat-card,
+html[dir="rtl"] .nav-item {
+    direction: rtl;
+}
+
+html[dir="rtl"] .page-header,
+html[dir="rtl"] .card-header,
+html[dir="rtl"] .session-item,
+html[dir="rtl"] .stat-card {
+    text-align: right;
+}
+
+html[dir="rtl"] .topbar-title,
+html[dir="rtl"] .page-header h1,
+html[dir="rtl"] .page-header p,
+html[dir="rtl"] .session-name,
+html[dir="rtl"] .session-meta,
+html[dir="rtl"] .nav-divider {
+    text-align: right;
+}
 
 /* ── Topbar ── */
 .topbar {
@@ -222,6 +271,22 @@ body { font-family: 'Inter', sans-serif; background: var(--bg); color: var(--tex
     .main-wrapper { margin-left: 0; }
     .content { padding: 16px; }
     .page-header { flex-direction: column; align-items: flex-start; gap: 12px; }
+}
+
+@media (max-width: 768px) {
+    html[dir="rtl"] .sidebar {
+        left: auto;
+        right: 0;
+        transform: translateX(100%);
+    }
+
+    html[dir="rtl"] .sidebar.mobile-open {
+        transform: translateX(0);
+    }
+
+    html[dir="rtl"] .main-wrapper {
+        margin-right: 0;
+    }
 }
 
 /* ── Alert override ── */

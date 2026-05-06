@@ -1,4 +1,5 @@
 {% extends "base.html" %}
+{% load i18n %}
 {% block title %}Dashboard{% endblock %}
 {% block page_title %}Dashboard{% endblock %}
 
@@ -12,8 +13,7 @@
         <p>{{ today|date:"l, F j, Y" }} · Cairo time (Africa/Cairo)</p>
     </div>
     <a href="{% url 'scheduler:session_create' %}?suggest=1" class="btn btn-primary">
-        <i class="fas fa-magic me-2"></i>Smart Schedule
-    </a>
+        <i class="fas fa-magic me-2"></i>{% trans "Smart Schedule" %}</a>
 </div>
 
 <!-- Stat cards -->
@@ -23,7 +23,7 @@
             <div class="stat-icon blue"><i class="fas fa-calendar-day"></i></div>
             <div>
                 <div class="stat-value">{{ total_sessions_today }}</div>
-                <div class="stat-label">Sessions Today</div>
+                <div class="stat-label">{% trans "Sessions Today" %}</div>
             </div>
         </div>
     </div>
@@ -32,7 +32,7 @@
             <div class="stat-icon green"><i class="fas fa-pound-sign"></i></div>
             <div>
                 <div class="stat-value">{{ today_earnings|floatformat:0 }}</div>
-                <div class="stat-label">Today's Earnings (EGP)</div>
+                <div class="stat-label">{% trans "Today's Earnings (EGP)" %}</div>
             </div>
         </div>
     </div>
@@ -41,7 +41,7 @@
             <div class="stat-icon purple"><i class="fas fa-wallet"></i></div>
             <div>
                 <div class="stat-value">{{ week_earnings|floatformat:0 }}</div>
-                <div class="stat-label">This Week (EGP)</div>
+                <div class="stat-label">{% trans "This Week (EGP)" %}</div>
             </div>
         </div>
     </div>
@@ -50,7 +50,7 @@
             <div class="stat-icon indigo"><i class="fas fa-user-graduate"></i></div>
             <div>
                 <div class="stat-value">{{ total_students }}</div>
-                <div class="stat-label">Active Students</div>
+                <div class="stat-label">{% trans "Active Students" %}</div>
             </div>
         </div>
     </div>
@@ -60,7 +60,7 @@
 {% if conflicts %}
 <div class="alert alert-danger mb-4">
     <i class="fas fa-exclamation-triangle me-2"></i>
-    <strong>Scheduling Conflict!</strong>
+    <strong>{% trans "Scheduling Conflict!" %}</strong>
     {{ conflicts|length }} overlapping session{{ conflicts|length|pluralize }} detected today. Please review and resolve.
 </div>
 {% endif %}
@@ -70,10 +70,9 @@
     <div class="col-lg-7">
         <div class="card">
             <div class="card-header">
-                <span><i class="fas fa-clock me-2 text-primary"></i>Today's Sessions <small class="fw-normal text-muted">(Cairo)</small></span>
+                <span><i class="fas fa-clock me-2 text-primary"></i>{% trans "Today's Sessions" %}<small class="fw-normal text-muted">{% trans "(Cairo)" %}</small></span>
                 <a href="{% url 'scheduler:session_create' %}" class="btn btn-sm btn-outline-primary">
-                    <i class="fas fa-plus me-1"></i>Add
-                </a>
+                    <i class="fas fa-plus me-1"></i>{% trans "Add" %}</a>
             </div>
             <div class="card-body p-0">
                 {% if today_sessions %}
@@ -88,7 +87,7 @@
                                 {{ session.start_time|date:"H:i" }} – {{ session.end_time|date:"H:i" }}
                                 ({{ session.duration_minutes }} min)
                                 {% if session.student.country %}· {{ session.student.country }}{% endif %}
-                                {% if session.is_makeup %}<span class="badge badge-missed ms-1">Makeup</span>{% endif %}
+                                {% if session.is_makeup %}<span class="badge badge-missed ms-1">{% trans "Makeup" %}</span>{% endif %}
                             </div>
                         </div>
                         <span class="badge badge-{{ session.status }}">{{ session.get_status_display }}</span>
@@ -101,8 +100,8 @@
                 {% else %}
                 <div class="empty-state">
                     <i class="fas fa-calendar-check"></i>
-                    <h5>No sessions today</h5>
-                    <p>Enjoy your free day or <a href="{% url 'scheduler:session_create' %}">add a session</a>.</p>
+                    <h5>{% trans "No sessions today" %}</h5>
+                    <p>{% trans "Enjoy your free day or" %}<a href="{% url 'scheduler:session_create' %}">{% trans "add a session" %}</a>.</p>
                 </div>
                 {% endif %}
             </div>
@@ -113,7 +112,7 @@
     <div class="col-lg-5">
         <div class="card mb-4">
             <div class="card-header">
-                <span><i class="fas fa-forward me-2 text-purple"></i>Upcoming Sessions</span>
+                <span><i class="fas fa-forward me-2 text-purple"></i>{% trans "Upcoming Sessions" %}</span>
             </div>
             <div class="card-body p-0">
                 {% if upcoming %}
@@ -141,27 +140,23 @@
                 {% else %}
                 <div class="empty-state py-4">
                     <i class="fas fa-calendar"></i>
-                    <p class="mb-0">No upcoming sessions</p>
+                    <p class="mb-0">{% trans "No upcoming sessions" %}</p>
                 </div>
                 {% endif %}
             </div>
         </div>
 
         <div class="card">
-            <div class="card-header"><span><i class="fas fa-bolt me-2 text-amber"></i>Quick Actions</span></div>
+            <div class="card-header"><span><i class="fas fa-bolt me-2 text-amber"></i>{% trans "Quick Actions" %}</span></div>
             <div class="card-body d-grid gap-2">
                 <a href="{% url 'scheduler:session_create' %}?suggest=1" class="btn btn-primary">
-                    <i class="fas fa-magic me-2"></i>Find Next Available Slot
-                </a>
+                    <i class="fas fa-magic me-2"></i>{% trans "Find Next Available Slot" %}</a>
                 <a href="{% url 'scheduler:calendar' %}" class="btn btn-outline-primary">
-                    <i class="fas fa-calendar-alt me-2"></i>Open Calendar
-                </a>
+                    <i class="fas fa-calendar-alt me-2"></i>{% trans "Open Calendar" %}</a>
                 <a href="{% url 'scheduler:student_create' %}" class="btn btn-outline-secondary">
-                    <i class="fas fa-user-plus me-2"></i>Add New Student
-                </a>
+                    <i class="fas fa-user-plus me-2"></i>{% trans "Add New Student" %}</a>
                 <a href="{% url 'scheduler:reports' %}" class="btn btn-outline-secondary">
-                    <i class="fas fa-file-invoice-dollar me-2"></i>View Financial Report
-                </a>
+                    <i class="fas fa-file-invoice-dollar me-2"></i>{% trans "View Financial Report" %}</a>
             </div>
         </div>
     </div>

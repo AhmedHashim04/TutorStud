@@ -1,12 +1,13 @@
 {% extends "base.html" %}
+{% load i18n %}
 {% block title %}Analytics{% endblock %}
 {% block page_title %}Analytics{% endblock %}
 
 {% block content %}
 <div class="page-header">
     <div>
-        <h1>Analytics & Insights</h1>
-        <p>Last 30 days performance overview</p>
+        <h1>{% trans "Analytics & Insights" %}</h1>
+        <p>{% trans "Last 30 days performance overview" %}</p>
     </div>
 </div>
 
@@ -17,7 +18,7 @@
             <div class="stat-icon blue"><i class="fas fa-calendar-check"></i></div>
             <div>
                 <div class="stat-value">{{ total_sessions }}</div>
-                <div class="stat-label">Total Sessions</div>
+                <div class="stat-label">{% trans "Total Sessions" %}</div>
             </div>
         </div>
     </div>
@@ -26,7 +27,7 @@
             <div class="stat-icon green"><i class="fas fa-check-double"></i></div>
             <div>
                 <div class="stat-value">{{ completed_sessions }}</div>
-                <div class="stat-label">Completed</div>
+                <div class="stat-label">{% trans "Completed" %}</div>
             </div>
         </div>
     </div>
@@ -35,7 +36,7 @@
             <div class="stat-icon amber"><i class="fas fa-ban"></i></div>
             <div>
                 <div class="stat-value">{{ cancellation_rate }}%</div>
-                <div class="stat-label">Cancellation Rate</div>
+                <div class="stat-label">{% trans "Cancellation Rate" %}</div>
             </div>
         </div>
     </div>
@@ -44,7 +45,7 @@
             <div class="stat-icon purple"><i class="fas fa-chart-area"></i></div>
             <div>
                 <div class="stat-value">{{ occupancy }}%</div>
-                <div class="stat-label">Occupancy Rate</div>
+                <div class="stat-label">{% trans "Occupancy Rate" %}</div>
             </div>
         </div>
     </div>
@@ -54,7 +55,7 @@
     <!-- Weekly trend -->
     <div class="col-lg-8">
         <div class="card">
-            <div class="card-header"><i class="fas fa-chart-line me-2 text-primary"></i>Weekly Sessions (Last 8 Weeks)</div>
+            <div class="card-header"><i class="fas fa-chart-line me-2 text-primary"></i>{% trans "Weekly Sessions (Last 8 Weeks)" %}</div>
             <div class="card-body">
                 <div class="chart-container">
                     <canvas id="weeklyChart"></canvas>
@@ -66,7 +67,7 @@
     <!-- Status distribution -->
     <div class="col-lg-4">
         <div class="card">
-            <div class="card-header"><i class="fas fa-chart-pie me-2 text-purple"></i>Status Distribution</div>
+            <div class="card-header"><i class="fas fa-chart-pie me-2 text-purple"></i>{% trans "Status Distribution" %}</div>
             <div class="card-body">
                 <div class="chart-container">
                     <canvas id="statusChart"></canvas>
@@ -78,7 +79,7 @@
     <!-- Best working hours -->
     <div class="col-lg-6">
         <div class="card">
-            <div class="card-header"><i class="fas fa-clock me-2 text-amber"></i>Most Productive Hours</div>
+            <div class="card-header"><i class="fas fa-clock me-2 text-amber"></i>{% trans "Most Productive Hours" %}</div>
             <div class="card-body">
                 <div class="chart-container">
                     <canvas id="hourChart"></canvas>
@@ -90,7 +91,7 @@
     <!-- Most committed students -->
     <div class="col-lg-6">
         <div class="card">
-            <div class="card-header"><i class="fas fa-trophy me-2 text-green"></i>Most Committed Students</div>
+            <div class="card-header"><i class="fas fa-trophy me-2 text-green"></i>{% trans "Most Committed Students" %}</div>
             <div class="card-body p-0">
                 {% if student_stats %}
                 <div class="px-3">
@@ -118,7 +119,7 @@
                 {% else %}
                 <div class="empty-state py-4">
                     <i class="fas fa-users"></i>
-                    <p>No data yet</p>
+                    <p>{% trans "No data yet" %}</p>
                 </div>
                 {% endif %}
             </div>

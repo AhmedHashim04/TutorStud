@@ -1,4 +1,5 @@
 {% extends "base.html" %}
+{% load i18n %}
 {% block title %}Deactivate Recurring Schedule{% endblock %}
 {% block page_title %}Deactivate Schedule{% endblock %}
 
@@ -6,9 +7,9 @@
 <div class="row justify-content-center">
     <div class="col-lg-6">
         <div class="card">
-            <div class="card-header text-danger"><i class="fas fa-exclamation-triangle me-2"></i>Deactivate Recurring Schedule</div>
+            <div class="card-header text-danger"><i class="fas fa-exclamation-triangle me-2"></i>{% trans "Deactivate Recurring Schedule" %}</div>
             <div class="card-body">
-                <p>Are you sure you want to deactivate this recurring schedule?</p>
+                <p>{% trans "Are you sure you want to deactivate this recurring schedule?" %}</p>
                 <div class="alert alert-secondary mb-3">
                     <strong>{{ schedule }}</strong><br>
                     <small>{{ schedule.student.name }} — {{ schedule.get_day_of_week_display }} at {{ schedule.start_time|time:"H:i" }} ({{ schedule.duration }} min)</small>
@@ -16,9 +17,7 @@
 
                 {% if future_count > 0 %}
                 <div class="alert alert-warning">
-                    <i class="fas fa-calendar-times me-2"></i>
-                    There are <strong>{{ future_count }}</strong> future scheduled session(s) linked to this pattern.
-                </div>
+                    <i class="fas fa-calendar-times me-2"></i>{% trans "There are" %}<strong>{{ future_count }}</strong>{% trans "future scheduled session(s) linked to this pattern." %}</div>
                 {% endif %}
 
                 <form method="post">
@@ -33,11 +32,9 @@
                     {% endif %}
                     <div class="d-flex gap-2">
                         <button type="submit" class="btn btn-danger">
-                            <i class="fas fa-ban me-2"></i>Deactivate
-                        </button>
+                            <i class="fas fa-ban me-2"></i>{% trans "Deactivate" %}</button>
                         <a href="{% url 'scheduler:student_detail' schedule.student.pk %}" class="btn btn-outline-secondary">
-                            <i class="fas fa-times me-2"></i>Cancel
-                        </a>
+                            <i class="fas fa-times me-2"></i>{% trans "Cancel" %}</a>
                     </div>
                 </form>
             </div>

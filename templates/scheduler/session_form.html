@@ -1,4 +1,5 @@
 {% extends "base.html" %}
+{% load i18n %}
 {% block title %}{{ title }}{% endblock %}
 {% block page_title %}{{ title }}{% endblock %}
 
@@ -42,17 +43,16 @@
 <div class="page-header">
     <div>
         <h1>{{ title }}</h1>
-        <p>Schedule a tutoring session with smart validation</p>
+        <p>{% trans "Schedule a tutoring session with smart validation" %}</p>
     </div>
     <a href="{% url 'scheduler:session_list' %}" class="btn btn-outline-secondary">
-        <i class="fas fa-arrow-left me-2"></i>Back
-    </a>
+        <i class="fas fa-arrow-left me-2"></i>{% trans "Back" %}</a>
 </div>
 
 <div class="row g-4">
     <div class="col-lg-7">
         <div class="card">
-            <div class="card-header"><i class="fas fa-calendar-plus me-2 text-primary"></i>Session Details</div>
+            <div class="card-header"><i class="fas fa-calendar-plus me-2 text-primary"></i>{% trans "Session Details" %}</div>
             <div class="card-body form-shell">
                 <form method="post">
                     {% csrf_token %}
@@ -66,9 +66,8 @@
                     {% endfor %}
                     <div class="d-flex gap-2 mt-4">
                         <button type="submit" class="btn btn-primary flex-1">
-                            <i class="fas fa-save me-2"></i>Save Session
-                        </button>
-                        <a href="{% url 'scheduler:session_list' %}" class="btn btn-outline-secondary">Cancel</a>
+                            <i class="fas fa-save me-2"></i>{% trans "Save Session" %}</button>
+                        <a href="{% url 'scheduler:session_list' %}" class="btn btn-outline-secondary">{% trans "Cancel" %}</a>
                     </div>
                 </form>
             </div>
@@ -77,31 +76,30 @@
 
     <div class="col-lg-5">
         <div class="card mb-3">
-            <div class="card-header"><i class="fas fa-magic me-2 text-purple"></i>Smart Slot Finder</div>
+            <div class="card-header"><i class="fas fa-magic me-2 text-purple"></i>{% trans "Smart Slot Finder" %}</div>
             <div class="card-body">
                 <div class="mb-3">
-                    <label class="form-label">Duration</label>
+                    <label class="form-label">{% trans "Duration" %}</label>
                     <select id="find-duration" class="form-select">
-                        <option value="30">30 minutes</option>
-                        <option value="60" selected>60 minutes</option>
+                        <option value="30">{% trans "30 minutes" %}</option>
+                        <option value="60" selected>{% trans "60 minutes" %}</option>
                     </select>
                 </div>
                 <button class="btn btn-outline-primary w-100 mb-2" onclick="findAndFill()">
-                    <i class="fas fa-search me-2"></i>Find Next Available Slot
-                </button>
+                    <i class="fas fa-search me-2"></i>{% trans "Find Next Available Slot" %}</button>
                 <div id="slot-result" style="display:none"></div>
             </div>
         </div>
 
         <div class="card">
-            <div class="card-header"><i class="fas fa-shield-alt me-2 text-success"></i>Validation Rules</div>
+            <div class="card-header"><i class="fas fa-shield-alt me-2 text-success"></i>{% trans "Validation Rules" %}</div>
             <div class="card-body">
                 <ul class="list-unstyled mb-0" style="font-size:13px">
-                    <li class="mb-2"><i class="fas fa-check-circle text-success me-2"></i>No overlapping sessions allowed</li>
-                    <li class="mb-2"><i class="fas fa-check-circle text-success me-2"></i>Must be within working hours</li>
-                    <li class="mb-2"><i class="fas fa-check-circle text-success me-2"></i>Prayer time blocks respected</li>
-                    <li class="mb-2"><i class="fas fa-check-circle text-success me-2"></i>Exception days blocked</li>
-                    <li><i class="fas fa-check-circle text-success me-2"></i>Cairo timezone (Africa/Cairo)</li>
+                    <li class="mb-2"><i class="fas fa-check-circle text-success me-2"></i>{% trans "No overlapping sessions allowed" %}</li>
+                    <li class="mb-2"><i class="fas fa-check-circle text-success me-2"></i>{% trans "Must be within working hours" %}</li>
+                    <li class="mb-2"><i class="fas fa-check-circle text-success me-2"></i>{% trans "Prayer time blocks respected" %}</li>
+                    <li class="mb-2"><i class="fas fa-check-circle text-success me-2"></i>{% trans "Exception days blocked" %}</li>
+                    <li><i class="fas fa-check-circle text-success me-2"></i>{% trans "Cairo timezone (Africa/Cairo)" %}</li>
                 </ul>
             </div>
         </div>

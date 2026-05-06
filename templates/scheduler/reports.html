@@ -1,12 +1,13 @@
 {% extends "base.html" %}
+{% load i18n %}
 {% block title %}Financial Reports{% endblock %}
 {% block page_title %}Financial Reports{% endblock %}
 
 {% block content %}
 <div class="page-header">
     <div>
-        <h1>Financial Reports</h1>
-        <p>Track your earnings and session history</p>
+        <h1>{% trans "Financial Reports" %}</h1>
+        <p>{% trans "Track your earnings and session history" %}</p>
     </div>
 </div>
 
@@ -15,21 +16,20 @@
     <div class="card-body">
         <form method="get" class="row g-3 align-items-end">
             <div class="col-md-3">
-                <label class="form-label">From Date</label>
+                <label class="form-label">{% trans "From Date" %}</label>
                 {{ form.start_date }}
             </div>
             <div class="col-md-3">
-                <label class="form-label">To Date</label>
+                <label class="form-label">{% trans "To Date" %}</label>
                 {{ form.end_date }}
             </div>
             <div class="col-md-3">
-                <label class="form-label">Student</label>
+                <label class="form-label">{% trans "Student" %}</label>
                 {{ form.student }}
             </div>
             <div class="col-md-3">
                 <button type="submit" class="btn btn-primary w-100">
-                    <i class="fas fa-filter me-2"></i>Apply Filter
-                </button>
+                    <i class="fas fa-filter me-2"></i>{% trans "Apply Filter" %}</button>
             </div>
         </form>
     </div>
@@ -42,7 +42,7 @@
             <div class="stat-icon green"><i class="fas fa-pound-sign"></i></div>
             <div>
                 <div class="stat-value" style="font-size:22px">{{ total_income|floatformat:0 }}</div>
-                <div class="stat-label">Total Income (EGP)</div>
+                <div class="stat-label">{% trans "Total Income (EGP)" %}</div>
             </div>
         </div>
     </div>
@@ -51,7 +51,7 @@
             <div class="stat-icon blue"><i class="fas fa-check-circle"></i></div>
             <div>
                 <div class="stat-value" style="font-size:22px">{{ completed_count }}</div>
-                <div class="stat-label">Completed Sessions</div>
+                <div class="stat-label">{% trans "Completed Sessions" %}</div>
             </div>
         </div>
     </div>
@@ -60,7 +60,7 @@
             <div class="stat-icon amber"><i class="fas fa-times-circle"></i></div>
             <div>
                 <div class="stat-value" style="font-size:22px">{{ cancelled_count }}</div>
-                <div class="stat-label">Cancelled</div>
+                <div class="stat-label">{% trans "Cancelled" %}</div>
             </div>
         </div>
     </div>
@@ -69,7 +69,7 @@
             <div class="stat-icon purple"><i class="fas fa-chart-pie"></i></div>
             <div>
                 <div class="stat-value" style="font-size:22px">{{ occupancy }}%</div>
-                <div class="stat-label">Occupancy Rate</div>
+                <div class="stat-label">{% trans "Occupancy Rate" %}</div>
             </div>
         </div>
     </div>
@@ -91,14 +91,14 @@
     <!-- Session status pie -->
     <div class="col-lg-4">
         <div class="card">
-            <div class="card-header"><i class="fas fa-chart-pie me-2 text-purple"></i>Session Status</div>
+            <div class="card-header"><i class="fas fa-chart-pie me-2 text-purple"></i>{% trans "Session Status" %}</div>
             <div class="card-body">
                 <div class="chart-container">
                     <canvas id="statusChart"></canvas>
                 </div>
                 <div class="mt-3">
                     <div class="d-flex justify-content-between mb-1" style="font-size:13px">
-                        <span>Completion Rate</span>
+                        <span>{% trans "Completion Rate" %}</span>
                         <strong>{% if total_sessions %}{{ completed_count|floatformat:0 }} / {{ total_sessions }}{% else %}—{% endif %}</strong>
                     </div>
                     <div class="progress">
@@ -112,11 +112,11 @@
     <!-- Per-student breakdown -->
     <div class="col-12">
         <div class="card">
-            <div class="card-header"><i class="fas fa-user-graduate me-2 text-indigo"></i>Per-Student Breakdown</div>
+            <div class="card-header"><i class="fas fa-user-graduate me-2 text-indigo"></i>{% trans "Per-Student Breakdown" %}</div>
             <div class="card-body p-0">
                 {% if student_breakdown %}
                 <table class="table">
-                    <thead><tr><th>Student</th><th>Sessions</th><th>Income (EGP)</th><th>Share</th></tr></thead>
+                    <thead><tr><th>{% trans "Student" %}</th><th>{% trans "Sessions" %}</th><th>{% trans "Income (EGP)" %}</th><th>{% trans "Share" %}</th></tr></thead>
                     <tbody>
                         {% for item in student_breakdown %}
                         <tr>
@@ -143,7 +143,7 @@
                 {% else %}
                 <div class="empty-state">
                     <i class="fas fa-chart-bar"></i>
-                    <h5>No completed sessions in this period</h5>
+                    <h5>{% trans "No completed sessions in this period" %}</h5>
                 </div>
                 {% endif %}
             </div>

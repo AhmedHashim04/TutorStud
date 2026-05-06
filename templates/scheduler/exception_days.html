@@ -1,19 +1,20 @@
 {% extends "base.html" %}
+{% load i18n %}
 {% block title %}Exception Days{% endblock %}
 {% block page_title %}Exception Days{% endblock %}
 
 {% block content %}
 <div class="page-header">
     <div>
-        <h1>Exception Days</h1>
-        <p>Mark specific days as unavailable (overrides working hours)</p>
+        <h1>{% trans "Exception Days" %}</h1>
+        <p>{% trans "Mark specific days as unavailable (overrides working hours)" %}</p>
     </div>
 </div>
 
 <div class="row g-4">
     <div class="col-lg-5">
         <div class="card">
-            <div class="card-header"><i class="fas fa-calendar-times me-2 text-danger"></i>Add Exception Day</div>
+            <div class="card-header"><i class="fas fa-calendar-times me-2 text-danger"></i>{% trans "Add Exception Day" %}</div>
             <div class="card-body">
                 <form method="post">
                     {% csrf_token %}
@@ -25,8 +26,7 @@
                     </div>
                     {% endfor %}
                     <button type="submit" class="btn btn-danger w-100">
-                        <i class="fas fa-plus me-2"></i>Block This Day
-                    </button>
+                        <i class="fas fa-plus me-2"></i>{% trans "Block This Day" %}</button>
                 </form>
             </div>
         </div>
@@ -34,11 +34,11 @@
 
     <div class="col-lg-7">
         <div class="card">
-            <div class="card-header"><i class="fas fa-list me-2"></i>Blocked Days</div>
+            <div class="card-header"><i class="fas fa-list me-2"></i>{% trans "Blocked Days" %}</div>
             <div class="card-body p-0">
                 {% if exceptions %}
                 <table class="table">
-                    <thead><tr><th>Date</th><th>Day</th><th>Reason</th><th></th></tr></thead>
+                    <thead><tr><th>{% trans "Date" %}</th><th>{% trans "Day" %}</th><th>{% trans "Reason" %}</th><th></th></tr></thead>
                     <tbody>
                         {% for exc in exceptions %}
                         <tr>
@@ -61,8 +61,8 @@
                 {% else %}
                 <div class="empty-state">
                     <i class="fas fa-calendar-check"></i>
-                    <h5>No exception days</h5>
-                    <p>All days follow your working hours schedule.</p>
+                    <h5>{% trans "No exception days" %}</h5>
+                    <p>{% trans "All days follow your working hours schedule." %}</p>
                 </div>
                 {% endif %}
             </div>

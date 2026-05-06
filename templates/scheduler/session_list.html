@@ -1,16 +1,16 @@
 {% extends "base.html" %}
+{% load i18n %}
 {% block title %}Sessions{% endblock %}
 {% block page_title %}Sessions{% endblock %}
 
 {% block content %}
 <div class="page-header">
     <div>
-        <h1>Sessions</h1>
-        <p>All tutoring sessions — times shown in Cairo timezone (Africa/Cairo)</p>
+        <h1>{% trans "Sessions" %}</h1>
+        <p>{% trans "All tutoring sessions — times shown in Cairo timezone (Africa/Cairo)" %}</p>
     </div>
     <a href="{% url 'scheduler:session_create' %}" class="btn btn-primary">
-        <i class="fas fa-plus me-2"></i>New Session
-    </a>
+        <i class="fas fa-plus me-2"></i>{% trans "New Session" %}</a>
 </div>
 
 <!-- Filters -->
@@ -18,19 +18,19 @@
     <div class="card-body">
         <form method="get" class="row g-3 align-items-end">
             <div class="col-md-4">
-                <label class="form-label">Status</label>
+                <label class="form-label">{% trans "Status" %}</label>
                 <select name="status" class="form-select">
-                    <option value="">All Statuses</option>
-                    <option value="scheduled"  {% if status_filter == "scheduled"  %}selected{% endif %}>Scheduled</option>
-                    <option value="completed"  {% if status_filter == "completed"  %}selected{% endif %}>Completed</option>
-                    <option value="cancelled"  {% if status_filter == "cancelled"  %}selected{% endif %}>Cancelled</option>
-                    <option value="missed"     {% if status_filter == "missed"     %}selected{% endif %}>Missed</option>
+                    <option value="">{% trans "All Statuses" %}</option>
+                    <option value="scheduled"  {% if status_filter == "scheduled"  %}selected{% endif %}>{% trans "Scheduled" %}</option>
+                    <option value="completed"  {% if status_filter == "completed"  %}selected{% endif %}>{% trans "Completed" %}</option>
+                    <option value="cancelled"  {% if status_filter == "cancelled"  %}selected{% endif %}>{% trans "Cancelled" %}</option>
+                    <option value="missed"     {% if status_filter == "missed"     %}selected{% endif %}>{% trans "Missed" %}</option>
                 </select>
             </div>
             <div class="col-md-4">
-                <label class="form-label">Student</label>
+                <label class="form-label">{% trans "Student" %}</label>
                 <select name="student" class="form-select">
-                    <option value="">All Students</option>
+                    <option value="">{% trans "All Students" %}</option>
                     {% for s in students %}
                     <option value="{{ s.pk }}" {% if student_filter == s.pk|stringformat:"s" %}selected{% endif %}>
                         {{ s.name }}{% if s.country %} ({{ s.country }}){% endif %}
@@ -40,8 +40,7 @@
             </div>
             <div class="col-md-4">
                 <button type="submit" class="btn btn-outline-primary w-100">
-                    <i class="fas fa-filter me-2"></i>Filter
-                </button>
+                    <i class="fas fa-filter me-2"></i>{% trans "Filter" %}</button>
             </div>
         </form>
     </div>
@@ -52,12 +51,12 @@
     <table class="table">
         <thead>
             <tr>
-                <th>Student</th>
-                <th>Date & Time <small class="fw-normal text-muted">(Cairo)</small></th>
-                <th>Duration</th>
-                <th>Status</th>
-                <th>Type</th>
-                <th>Actions</th>
+                <th>{% trans "Student" %}</th>
+                <th>{% trans "Date & Time" %}<small class="fw-normal text-muted">{% trans "(Cairo)" %}</small></th>
+                <th>{% trans "Duration" %}</th>
+                <th>{% trans "Status" %}</th>
+                <th>{% trans "Type" %}</th>
+                <th>{% trans "Actions" %}</th>
             </tr>
         </thead>
         <tbody>
@@ -80,18 +79,18 @@
                     <div class="fw-semibold">{{ session.start_time|date:"M j, Y" }}</div>
                     <div class="text-muted" style="font-size:12px">
                         {{ session.start_time|date:"H:i" }} – {{ session.end_time|date:"H:i" }}
-                        <span style="font-size:10px;color:var(--text-muted)">Cairo</span>
+                        <span style="font-size:10px;color:var(--text-muted)">{% trans "Cairo" %}</span>
                     </div>
                 </td>
                 <td>{{ session.duration_minutes }} min</td>
                 <td><span class="badge badge-{{ session.status }}">{{ session.get_status_display }}</span></td>
                 <td>
                     {% if session.is_makeup %}
-                        <span class="badge bg-warning text-dark">Makeup</span>
+                        <span class="badge bg-warning text-dark">{% trans "Makeup" %}</span>
                     {% elif session.is_recurring %}
-                        <span class="badge bg-info text-dark">Recurring</span>
+                        <span class="badge bg-info text-dark">{% trans "Recurring" %}</span>
                     {% else %}
-                        <span class="badge bg-light text-muted">One-time</span>
+                        <span class="badge bg-light text-muted">{% trans "One-time" %}</span>
                     {% endif %}
                 </td>
                 <td>
@@ -111,8 +110,8 @@
     {% else %}
     <div class="empty-state">
         <i class="fas fa-clock"></i>
-        <h5>No sessions found</h5>
-        <p>Try adjusting the filters or <a href="{% url 'scheduler:session_create' %}">add a new session</a>.</p>
+        <h5>{% trans "No sessions found" %}</h5>
+        <p>{% trans "Try adjusting the filters or" %}<a href="{% url 'scheduler:session_create' %}">{% trans "add a new session" %}</a>.</p>
     </div>
     {% endif %}
 </div>

@@ -1,4 +1,5 @@
 {% extends "base.html" %}
+{% load i18n %}
 {% block title %}{{ title }}{% endblock %}
 {% block page_title %}{{ title }}{% endblock %}
 
@@ -55,15 +56,14 @@
         <p>{% if student %}Update student information{% else %}Add a new student and their subscription{% endif %}</p>
     </div>
     <a href="{% url 'scheduler:student_list' %}" class="btn btn-outline-secondary">
-        <i class="fas fa-arrow-left me-2"></i>Back
-    </a>
+        <i class="fas fa-arrow-left me-2"></i>{% trans "Back" %}</a>
 </div>
 
 <form method="post" class="row g-4 form-shell">
     {% csrf_token %}
     <div class="col-lg-6">
         <div class="card h-100">
-            <div class="card-header"><i class="fas fa-user me-2 text-primary"></i>Student Information</div>
+            <div class="card-header"><i class="fas fa-user me-2 text-primary"></i>{% trans "Student Information" %}</div>
             <div class="card-body">
                 <div class="field-grid">
                     {% for field in form %}
@@ -77,8 +77,7 @@
                 </div>
                 {% if not sub_form %}
                 <button type="submit" class="btn btn-primary w-100 mt-4">
-                    <i class="fas fa-save me-2"></i>Save Changes
-                </button>
+                    <i class="fas fa-save me-2"></i>{% trans "Save Changes" %}</button>
                 {% endif %}
             </div>
         </div>
@@ -87,7 +86,7 @@
     {% if sub_form %}
     <div class="col-lg-6">
         <div class="card h-100">
-            <div class="card-header"><i class="fas fa-tags me-2 text-purple"></i>Subscription Details</div>
+            <div class="card-header"><i class="fas fa-tags me-2 text-purple"></i>{% trans "Subscription Details" %}</div>
             <div class="card-body">
                 <div class="field-grid">
                     {% for field in sub_form %}
@@ -101,13 +100,12 @@
                 </div>
                 <div id="earnings-preview" class="mt-4" style="background:linear-gradient(135deg,var(--primary),var(--secondary));border-radius:16px;padding:16px;color:white;margin-bottom:16px;display:none">
                     <div class="d-flex justify-content-between gap-3">
-                        <div><div style="font-size:11px;opacity:.8">Weekly Earnings</div><div id="weekly-val" style="font-size:22px;font-weight:700">—</div></div>
-                        <div style="text-align:right"><div style="font-size:11px;opacity:.8">Monthly Earnings</div><div id="monthly-val" style="font-size:22px;font-weight:700">—</div></div>
+                        <div><div style="font-size:11px;opacity:.8">{% trans "Weekly Earnings" %}</div><div id="weekly-val" style="font-size:22px;font-weight:700">—</div></div>
+                        <div style="text-align:right"><div style="font-size:11px;opacity:.8">{% trans "Monthly Earnings" %}</div><div id="monthly-val" style="font-size:22px;font-weight:700">—</div></div>
                     </div>
                 </div>
                 <button type="submit" class="btn btn-primary w-100">
-                    <i class="fas fa-user-plus me-2"></i>Create Student
-                </button>
+                    <i class="fas fa-user-plus me-2"></i>{% trans "Create Student" %}</button>
             </div>
         </div>
     </div>
