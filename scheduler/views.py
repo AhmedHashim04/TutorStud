@@ -285,3 +285,47 @@ def api_calendar_events(request):
         })
         
     return JsonResponse(events, safe=False)
+
+def analytics_dashboard(request):
+    """Renders the Analytics SPA dashboard."""
+    context = {
+        'students': Student.objects.all().order_by('name'),
+        'student_form': StudentForm(),
+        'session_form': ManualSessionForm(),
+    }
+    return render(request, 'scheduler/analytics.html', context)
+
+def api_analytics(request):
+    """Returns JSON analytics data based on filters."""
+    from .analytics import get_analytics_data
+    from django.utils.dateparse import parse_datetime
+    
+    start_str = request.GET.get('start_date')
+    end_str = request.GET.get('end_date')
+    student_id = request.GET.get('student_id')
+    
+    start_dt = None
+    end_dt = None
+    
+    if start_str:
+        start_dt = parse_datetime(start_str + "T00:00:00")
+        if start_dt and timezone.is_naive(start_dt):
+            start_dt = timezone.make_aware(start_dt, CAIRO_TZ)
+            
+    if end_str:
+        end_dt = parse_datetime(end_str + "T23:59:59")
+        if end_dt and timezone.is_naive(end_dt):
+            end_dt = timezone.make_aware(end_dt, CAIRO_TZ)
+            
+    # Default to last 30 days if no dates provided
+    if not start_dt:
+        end_dt = timezone.now()
+        start_dt = end_dt - timedelta(days=30)
+        
+    data = get_analytics_data(
+        start_date=start_dt,
+        end_date=end_dt,
+        student_id=student_id if student_id else None
+    )
+    
+    return JsonResponse(data)

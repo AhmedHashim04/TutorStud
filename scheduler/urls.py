@@ -11,6 +11,10 @@ urlpatterns = [
     path('calendar/', views.calendar_view, name='calendar'),
     path('api/calendar-events/', views.api_calendar_events, name='api_calendar_events'),
     
+    # Analytics
+    path('analytics/', views.analytics_dashboard, name='analytics'),
+    path('api/analytics/', views.api_analytics, name='api_analytics'),
+    
     # Students / Mini OS
     path('students/', views.student_list, name='student_list'),
     path('students/<int:pk>/', views.student_detail, name='student_detail'),

@@ -1,208 +1,470 @@
-{% extends "base.html" %}
+{% extends 'base.html' %}
 {% load i18n %}
-{% block title %}Analytics{% endblock %}
-{% block page_title %}Analytics{% endblock %}
+
+{% block page_title %}{% trans "Analytics Intelligence" %}{% endblock %}
+
+{% block extra_css %}
+<style>
+    .analytics-hero-card {
+        border: none;
+        border-radius: 16px;
+        background: linear-gradient(145deg, #ffffff, #f8f9fa);
+        box-shadow: 0 4px 15px rgba(0,0,0,0.03);
+        transition: transform 0.2s ease;
+    }
+    .analytics-hero-card:hover {
+        transform: translateY(-2px);
+    }
+    .hero-icon {
+        width: 48px;
+        height: 48px;
+        border-radius: 12px;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        font-size: 1.25rem;
+    }
+    .chart-container {
+        position: relative;
+        height: 300px;
+        width: 100%;
+    }
+    .filter-bar {
+        background: #ffffff;
+        border-radius: 12px;
+        padding: 1rem;
+        box-shadow: 0 2px 10px rgba(0,0,0,0.02);
+    }
+    .leaderboard-avatar {
+        width: 40px;
+        height: 40px;
+        border-radius: 50%;
+        background: #edf2f7;
+        color: #4a5568;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        font-weight: bold;
+    }
+    .leaderboard-row {
+        transition: background-color 0.2s;
+    }
+    .leaderboard-row:hover {
+        background-color: #f8f9fa;
+    }
+    
+    /* Loading overlay */
+    #loading-overlay {
+        position: absolute;
+        top: 0; left: 0; right: 0; bottom: 0;
+        background: rgba(255,255,255,0.8);
+        z-index: 10;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        border-radius: 12px;
+        opacity: 0;
+        pointer-events: none;
+        transition: opacity 0.2s;
+    }
+    #loading-overlay.active {
+        opacity: 1;
+        pointer-events: all;
+    }
+</style>
+{% endblock %}
 
 {% block content %}
-<div class="page-header">
-    <div>
-        <h1>{% trans "Analytics & Insights" %}</h1>
-        <p>{% trans "Last 30 days performance overview" %}</p>
+<div class="container-fluid py-4 position-relative">
+    
+    <!-- Loading Overlay -->
+    <div id="loading-overlay">
+        <div class="spinner-border text-primary" role="status">
+            <span class="visually-hidden">Loading...</span>
+        </div>
     </div>
-</div>
 
-<!-- KPIs -->
-<div class="row g-3 mb-4">
-    <div class="col-6 col-md-3">
-        <div class="stat-card">
-            <div class="stat-icon blue"><i class="fas fa-calendar-check"></i></div>
+    <div class="d-flex justify-content-between align-items-center mb-4">
+        <div>
+            <h3 class="mb-0 fw-bold">{% trans "Intelligence" %}</h3>
+            <p class="text-muted mb-0 small">Data-driven insights for your tutoring business</p>
+        </div>
+        <button class="btn btn-primary" data-bs-toggle="modal" data-bs-target="#addSessionModal">
+            <i class="fas fa-plus me-1"></i>{% trans "Drop Manual Session" %}
+        </button>
+    </div>
+
+    <!-- Smart Filter Bar -->
+    <div class="filter-bar mb-4 d-flex flex-wrap gap-3 align-items-end">
+        <div style="min-width: 200px;">
+            <label class="form-label text-muted small fw-bold mb-1">{% trans "Date Range" %}</label>
+            <select id="filterDateRange" class="form-select border-0 bg-light">
+                <option value="30">Last 30 Days</option>
+                <option value="90">Last 90 Days</option>
+                <option value="180">Last 6 Months</option>
+                <option value="365">Last Year</option>
+                <option value="custom">Custom Range...</option>
+            </select>
+        </div>
+        
+        <div id="customDateWrap" class="d-none d-flex gap-2">
             <div>
-                <div class="stat-value">{{ total_sessions }}</div>
-                <div class="stat-label">{% trans "Total Sessions" %}</div>
+                <label class="form-label text-muted small fw-bold mb-1">{% trans "Start" %}</label>
+                <input type="date" id="filterStart" class="form-control border-0 bg-light">
             </div>
-        </div>
-    </div>
-    <div class="col-6 col-md-3">
-        <div class="stat-card">
-            <div class="stat-icon green"><i class="fas fa-check-double"></i></div>
             <div>
-                <div class="stat-value">{{ completed_sessions }}</div>
-                <div class="stat-label">{% trans "Completed" %}</div>
+                <label class="form-label text-muted small fw-bold mb-1">{% trans "End" %}</label>
+                <input type="date" id="filterEnd" class="form-control border-0 bg-light">
             </div>
         </div>
-    </div>
-    <div class="col-6 col-md-3">
-        <div class="stat-card">
-            <div class="stat-icon amber"><i class="fas fa-ban"></i></div>
-            <div>
-                <div class="stat-value">{{ cancellation_rate }}%</div>
-                <div class="stat-label">{% trans "Cancellation Rate" %}</div>
-            </div>
-        </div>
-    </div>
-    <div class="col-6 col-md-3">
-        <div class="stat-card">
-            <div class="stat-icon purple"><i class="fas fa-chart-area"></i></div>
-            <div>
-                <div class="stat-value">{{ occupancy }}%</div>
-                <div class="stat-label">{% trans "Occupancy Rate" %}</div>
-            </div>
-        </div>
-    </div>
-</div>
 
-<div class="row g-4">
-    <!-- Weekly trend -->
-    <div class="col-lg-8">
-        <div class="card">
-            <div class="card-header"><i class="fas fa-chart-line me-2 text-primary"></i>{% trans "Weekly Sessions (Last 8 Weeks)" %}</div>
-            <div class="card-body">
-                <div class="chart-container">
-                    <canvas id="weeklyChart"></canvas>
-                </div>
-            </div>
+        <div style="min-width: 250px;">
+            <label class="form-label text-muted small fw-bold mb-1">{% trans "Student Filter" %}</label>
+            <select id="filterStudent" class="form-select border-0 bg-light">
+                <option value="">All Students</option>
+                {% for s in students %}
+                <option value="{{ s.id }}">{{ s.name }}</option>
+                {% endfor %}
+            </select>
         </div>
+        
+        <button id="btnApplyFilter" class="btn btn-dark px-4">{% trans "Apply" %}</button>
     </div>
 
-    <!-- Status distribution -->
-    <div class="col-lg-4">
-        <div class="card">
-            <div class="card-header"><i class="fas fa-chart-pie me-2 text-purple"></i>{% trans "Status Distribution" %}</div>
-            <div class="card-body">
-                <div class="chart-container">
-                    <canvas id="statusChart"></canvas>
-                </div>
-            </div>
-        </div>
-    </div>
-
-    <!-- Best working hours -->
-    <div class="col-lg-6">
-        <div class="card">
-            <div class="card-header"><i class="fas fa-clock me-2 text-amber"></i>{% trans "Most Productive Hours" %}</div>
-            <div class="card-body">
-                <div class="chart-container">
-                    <canvas id="hourChart"></canvas>
-                </div>
-            </div>
-        </div>
-    </div>
-
-    <!-- Most committed students -->
-    <div class="col-lg-6">
-        <div class="card">
-            <div class="card-header"><i class="fas fa-trophy me-2 text-green"></i>{% trans "Most Committed Students" %}</div>
-            <div class="card-body p-0">
-                {% if student_stats %}
-                <div class="px-3">
-                    {% for item in student_stats %}
-                    <div style="padding:12px 0;border-bottom:1px solid var(--border)" {% if forloop.last %}style="border:none"{% endif %}>
-                        <div class="d-flex align-items-center gap-2 mb-1">
-                            <div style="width:24px;height:24px;border-radius:50%;background:{% if forloop.counter == 1 %}#f59e0b{% elif forloop.counter == 2 %}#9ca3af{% elif forloop.counter == 3 %}#cd7f32{% else %}var(--primary-light){% endif %};display:flex;align-items:center;justify-content:center;font-size:11px;font-weight:700;color:{% if forloop.counter <= 3 %}white{% else %}var(--primary){% endif %}">
-                                {{ forloop.counter }}
-                            </div>
-                            <span class="fw-semibold" style="flex:1">{{ item.student.name }}</span>
-                            <span class="badge {% if item.rate >= 80 %}bg-success{% elif item.rate >= 60 %}bg-warning text-dark{% else %}bg-danger{% endif %}">
-                                {{ item.rate }}%
-                            </span>
-                        </div>
-                        <div class="progress" style="height:5px">
-                            <div class="progress-bar {% if item.rate >= 80 %}bg-success{% elif item.rate >= 60 %}bg-warning{% else %}bg-danger{% endif %}"
-                                style="width:{{ item.rate }}%"></div>
-                        </div>
-                        <div class="text-muted mt-1" style="font-size:11px">
-                            {{ item.completed }} completed · {{ item.cancelled }} cancelled · {{ item.total }} total
-                        </div>
+    <!-- Hero Metrics -->
+    <div class="row g-4 mb-4">
+        <div class="col-md-3">
+            <div class="card analytics-hero-card h-100 p-4">
+                <div class="d-flex justify-content-between align-items-start mb-3">
+                    <div>
+                        <h6 class="text-muted mb-1 text-uppercase" style="font-size: 0.75rem; letter-spacing: 0.5px;">Earned Revenue</h6>
+                        <h2 class="mb-0 fw-bold" id="metricEarned">$0</h2>
                     </div>
-                    {% endfor %}
+                    <div class="hero-icon bg-success bg-opacity-10 text-success">
+                        <i class="fas fa-wallet"></i>
+                    </div>
                 </div>
-                {% else %}
-                <div class="empty-state py-4">
-                    <i class="fas fa-users"></i>
-                    <p>{% trans "No data yet" %}</p>
+            </div>
+        </div>
+        
+        <div class="col-md-3">
+            <div class="card analytics-hero-card h-100 p-4">
+                <div class="d-flex justify-content-between align-items-start mb-3">
+                    <div>
+                        <h6 class="text-muted mb-1 text-uppercase" style="font-size: 0.75rem; letter-spacing: 0.5px;">Projected (Upcoming)</h6>
+                        <h2 class="mb-0 fw-bold" id="metricProjected">$0</h2>
+                    </div>
+                    <div class="hero-icon bg-primary bg-opacity-10 text-primary">
+                        <i class="fas fa-chart-line"></i>
+                    </div>
                 </div>
-                {% endif %}
+            </div>
+        </div>
+        
+        <div class="col-md-3">
+            <div class="card analytics-hero-card h-100 p-4">
+                <div class="d-flex justify-content-between align-items-start mb-3">
+                    <div>
+                        <h6 class="text-muted mb-1 text-uppercase" style="font-size: 0.75rem; letter-spacing: 0.5px;">Total Sessions</h6>
+                        <h2 class="mb-0 fw-bold" id="metricSessions">0</h2>
+                    </div>
+                    <div class="hero-icon bg-info bg-opacity-10 text-info">
+                        <i class="fas fa-chalkboard-teacher"></i>
+                    </div>
+                </div>
+            </div>
+        </div>
+        
+        <div class="col-md-3">
+            <div class="card analytics-hero-card h-100 p-4">
+                <div class="d-flex justify-content-between align-items-start mb-3">
+                    <div>
+                        <h6 class="text-muted mb-1 text-uppercase" style="font-size: 0.75rem; letter-spacing: 0.5px;">Attendance Rate</h6>
+                        <h2 class="mb-0 fw-bold" id="metricAttendance">0%</h2>
+                    </div>
+                    <div class="hero-icon bg-warning bg-opacity-10 text-warning">
+                        <i class="fas fa-user-check"></i>
+                    </div>
+                </div>
             </div>
         </div>
     </div>
+
+    <!-- Charts Row 1 -->
+    <div class="row g-4 mb-4">
+        <!-- Revenue Trend -->
+        <div class="col-lg-8">
+            <div class="card shadow-sm border-0 h-100 rounded-4 p-4">
+                <h5 class="fw-bold mb-4">Revenue Trend</h5>
+                <div class="chart-container">
+                    <canvas id="trendChart"></canvas>
+                </div>
+            </div>
+        </div>
+        
+        <!-- Session Health -->
+        <div class="col-lg-4">
+            <div class="card shadow-sm border-0 h-100 rounded-4 p-4">
+                <h5 class="fw-bold mb-4">Session Health</h5>
+                <div class="chart-container">
+                    <canvas id="healthChart"></canvas>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Charts Row 2 -->
+    <div class="row g-4">
+        <!-- Busiest Days Workload -->
+        <div class="col-lg-6">
+            <div class="card shadow-sm border-0 h-100 rounded-4 p-4">
+                <h5 class="fw-bold mb-4">Workload Distribution</h5>
+                <p class="text-muted small mb-4">Number of sessions held on each day of the week.</p>
+                <div class="chart-container">
+                    <canvas id="workloadChart"></canvas>
+                </div>
+            </div>
+        </div>
+        
+        <!-- Top Students Leaderboard -->
+        <div class="col-lg-6">
+            <div class="card shadow-sm border-0 h-100 rounded-4 p-4">
+                <h5 class="fw-bold mb-4">Top Students Leaderboard</h5>
+                <p class="text-muted small mb-4">Ranked by revenue generated in the selected period.</p>
+                <div class="table-responsive">
+                    <table class="table table-hover align-middle border-white">
+                        <thead>
+                            <tr class="text-muted small">
+                                <th>Student</th>
+                                <th>Country</th>
+                                <th class="text-center">Sessions</th>
+                                <th class="text-end">Revenue</th>
+                            </tr>
+                        </thead>
+                        <tbody id="leaderboardBody">
+                            <!-- Injected via JS -->
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+        </div>
+    </div>
+
 </div>
 {% endblock %}
 
 {% block extra_js %}
 <script>
-const weeklyData = {{ weekly_data_json|safe }};
-const hourData = {{ hour_data_json|safe }};
-const statusData = {{ status_dist_json|safe }};
+let trendChart, healthChart, workloadChart;
 
-// Weekly trend
-new Chart(document.getElementById('weeklyChart'), {
-    type: 'line',
-    data: {
-        labels: Object.keys(weeklyData),
-        datasets: [{
-            label: 'Completed Sessions',
-            data: Object.values(weeklyData),
-            borderColor: '#6366f1',
-            backgroundColor: 'rgba(99,102,241,0.1)',
-            borderWidth: 2.5,
-            fill: true,
-            tension: 0.4,
-            pointBackgroundColor: '#6366f1',
-            pointRadius: 4,
-        }]
-    },
-    options: {
-        responsive: true, maintainAspectRatio: false,
-        plugins: { legend: { display: false } },
-        scales: {
-            y: { beginAtZero: true, grid: { color: '#f1f5f9' }, ticks: { stepSize: 1 } },
-            x: { grid: { display: false } }
-        }
-    }
-});
-
-// Hour productivity
-const hours = Object.keys(hourData).sort((a,b) => a-b);
-new Chart(document.getElementById('hourChart'), {
-    type: 'bar',
-    data: {
-        labels: hours.map(h => h.padStart(2,'0') + ':00'),
-        datasets: [{
-            label: 'Sessions',
-            data: hours.map(h => hourData[h]),
-            backgroundColor: 'rgba(245,158,11,0.8)',
-            borderRadius: 6,
-            borderSkipped: false,
-        }]
-    },
-    options: {
-        responsive: true, maintainAspectRatio: false,
-        plugins: { legend: { display: false } },
-        scales: {
-            y: { beginAtZero: true, grid: { color: '#f1f5f9' }, ticks: { stepSize: 1 } },
-            x: { grid: { display: false } }
-        }
-    }
-});
-
-// Status distribution
-new Chart(document.getElementById('statusChart'), {
-    type: 'doughnut',
-    data: {
-        labels: Object.keys(statusData),
-        datasets: [{
-            data: Object.values(statusData),
-            backgroundColor: ['#10b981','#ef4444','#f59e0b','#3b82f6'],
-            borderWidth: 0,
-        }]
-    },
-    options: {
-        responsive: true, maintainAspectRatio: false,
-        plugins: {
-            legend: { position: 'bottom', labels: { padding: 12, font: { size: 12 } } }
+function initCharts() {
+    // Shared formatting
+    Chart.defaults.font.family = "'Inter', 'Segoe UI', Roboto, Helvetica, Arial, sans-serif";
+    Chart.defaults.color = '#718096';
+    
+    // Trend Area Chart
+    const ctxTrend = document.getElementById('trendChart').getContext('2d');
+    
+    // Gradient for area
+    let gradient = ctxTrend.createLinearGradient(0, 0, 0, 300);
+    gradient.addColorStop(0, 'rgba(13, 110, 253, 0.2)');
+    gradient.addColorStop(1, 'rgba(13, 110, 253, 0)');
+    
+    trendChart = new Chart(ctxTrend, {
+        type: 'line',
+        data: {
+            labels: [],
+            datasets: [{
+                label: 'Revenue',
+                data: [],
+                borderColor: '#0d6efd',
+                backgroundColor: gradient,
+                borderWidth: 2,
+                pointBackgroundColor: '#ffffff',
+                pointBorderColor: '#0d6efd',
+                pointBorderWidth: 2,
+                pointRadius: 4,
+                pointHoverRadius: 6,
+                fill: true,
+                tension: 0.4 // Smooth curves
+            }]
         },
-        cutout: '60%',
+        options: {
+            responsive: true,
+            maintainAspectRatio: false,
+            plugins: {
+                legend: { display: false },
+                tooltip: {
+                    backgroundColor: '#1a202c',
+                    padding: 12,
+                    titleFont: { size: 13 },
+                    bodyFont: { size: 14, weight: 'bold' },
+                    callbacks: {
+                        label: function(context) {
+                            return ' $' + context.parsed.y;
+                        }
+                    }
+                }
+            },
+            scales: {
+                y: {
+                    beginAtZero: true,
+                    grid: { color: '#f1f5f9', drawBorder: false },
+                    border: { display: false },
+                    ticks: { callback: function(value) { return '$' + value; } }
+                },
+                x: {
+                    grid: { display: false, drawBorder: false },
+                    border: { display: false }
+                }
+            }
+        }
+    });
+
+    // Session Health Doughnut
+    const ctxHealth = document.getElementById('healthChart').getContext('2d');
+    healthChart = new Chart(ctxHealth, {
+        type: 'doughnut',
+        data: {
+            labels: ['Attended', 'No-Show', 'Excused', 'Cancelled'],
+            datasets: [{
+                data: [0,0,0,0],
+                backgroundColor: ['#198754', '#dc3545', '#ffc107', '#6c757d'],
+                borderWidth: 0,
+                hoverOffset: 4
+            }]
+        },
+        options: {
+            responsive: true,
+            maintainAspectRatio: false,
+            cutout: '75%',
+            plugins: {
+                legend: { position: 'bottom', labels: { padding: 20, usePointStyle: true } }
+            }
+        }
+    });
+
+    // Workload Bar Chart
+    const ctxWorkload = document.getElementById('workloadChart').getContext('2d');
+    workloadChart = new Chart(ctxWorkload, {
+        type: 'bar',
+        data: {
+            labels: ['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat', 'Sun'],
+            datasets: [{
+                label: 'Sessions',
+                data: [0,0,0,0,0,0,0],
+                backgroundColor: '#e2e8f0',
+                hoverBackgroundColor: '#0d6efd',
+                borderRadius: 4
+            }]
+        },
+        options: {
+            responsive: true,
+            maintainAspectRatio: false,
+            plugins: { legend: { display: false } },
+            scales: {
+                y: { display: false, beginAtZero: true },
+                x: { grid: { display: false, drawBorder: false }, border: { display: false } }
+            }
+        }
+    });
+}
+
+function formatDateToYMD(date) {
+    return date.toISOString().split('T')[0];
+}
+
+function fetchAnalyticsData() {
+    document.getElementById('loading-overlay').classList.add('active');
+    
+    const rangeSelect = document.getElementById('filterDateRange').value;
+    let startDate = '';
+    let endDate = '';
+    
+    if (rangeSelect !== 'custom') {
+        const today = new Date();
+        const past = new Date();
+        past.setDate(today.getDate() - parseInt(rangeSelect));
+        startDate = formatDateToYMD(past);
+        endDate = formatDateToYMD(today);
+    } else {
+        startDate = document.getElementById('filterStart').value;
+        endDate = document.getElementById('filterEnd').value;
     }
+    
+    const studentId = document.getElementById('filterStudent').value;
+    
+    let url = `/api/analytics/?start_date=${startDate}&end_date=${endDate}`;
+    if (studentId) url += `&student_id=${studentId}`;
+    
+    fetch(url)
+        .then(response => response.json())
+        .then(data => {
+            // Update Hero
+            document.getElementById('metricEarned').innerText = '$' + data.hero.earned_revenue.toLocaleString();
+            document.getElementById('metricProjected').innerText = '$' + data.hero.projected_revenue.toLocaleString();
+            document.getElementById('metricSessions').innerText = data.hero.total_past_sessions.toLocaleString();
+            
+            const attEl = document.getElementById('metricAttendance');
+            attEl.innerText = data.hero.attendance_rate + '%';
+            if (data.hero.attendance_rate >= 80) attEl.className = 'mb-0 fw-bold text-success';
+            else if (data.hero.attendance_rate < 50) attEl.className = 'mb-0 fw-bold text-danger';
+            else attEl.className = 'mb-0 fw-bold text-dark';
+            
+            // Update Charts
+            trendChart.data.labels = data.charts.trend.labels;
+            trendChart.data.datasets[0].data = data.charts.trend.data;
+            trendChart.update();
+            
+            healthChart.data.datasets[0].data = data.charts.health;
+            healthChart.update();
+            
+            workloadChart.data.labels = data.charts.workload.labels;
+            workloadChart.data.datasets[0].data = data.charts.workload.data;
+            workloadChart.update();
+            
+            // Update Leaderboard
+            const tbody = document.getElementById('leaderboardBody');
+            tbody.innerHTML = '';
+            if (data.leaderboard.length === 0) {
+                tbody.innerHTML = '<tr><td colspan="4" class="text-center text-muted py-4">No data available for this period.</td></tr>';
+            } else {
+                data.leaderboard.forEach(student => {
+                    const initials = student.name.substring(0, 2).toUpperCase();
+                    tbody.innerHTML += `
+                        <tr class="leaderboard-row">
+                            <td>
+                                <div class="d-flex align-items-center gap-3">
+                                    <div class="leaderboard-avatar">${initials}</div>
+                                    <a href="/students/${student.id}/" class="text-decoration-none text-dark fw-bold">${student.name}</a>
+                                </div>
+                            </td>
+                            <td><span class="badge bg-light text-dark border">${student.country}</span></td>
+                            <td class="text-center">${student.sessions}</td>
+                            <td class="text-end fw-bold text-success">$${student.revenue.toLocaleString()}</td>
+                        </tr>
+                    `;
+                });
+            }
+            
+            document.getElementById('loading-overlay').classList.remove('active');
+        });
+}
+
+document.addEventListener('DOMContentLoaded', function() {
+    initCharts();
+    fetchAnalyticsData();
+    
+    // Interactions
+    document.getElementById('filterDateRange').addEventListener('change', function() {
+        if(this.value === 'custom') {
+            document.getElementById('customDateWrap').classList.remove('d-none');
+        } else {
+            document.getElementById('customDateWrap').classList.add('d-none');
+        }
+    });
+    
+    document.getElementById('btnApplyFilter').addEventListener('click', fetchAnalyticsData);
 });
 </script>
 {% endblock %}
