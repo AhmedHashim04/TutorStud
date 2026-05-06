@@ -1,164 +1,187 @@
-{% extends "base.html" %}
+{% extends 'base.html' %}
 {% load i18n %}
-{% block title %}Dashboard{% endblock %}
-{% block page_title %}Dashboard{% endblock %}
+
+{% block page_title %}{% trans "Command Center" %} - {{ today|date:"l, F j" }}{% endblock %}
 
 {% block content %}
-<div class="page-header">
-    <div>
-        <h1>
-            {% now "H" as hour %}
-            {% if hour < "12" %}Good Morning{% elif hour < "17" %}Good Afternoon{% else %}Good Evening{% endif %}!
-        </h1>
-        <p>{{ today|date:"l, F j, Y" }} · Cairo time (Africa/Cairo)</p>
-    </div>
-    <a href="{% url 'scheduler:session_create' %}?suggest=1" class="btn btn-primary">
-        <i class="fas fa-magic me-2"></i>{% trans "Smart Schedule" %}</a>
-</div>
+<div class="container-fluid py-4">
 
-<!-- Stat cards -->
-<div class="row g-3 mb-4">
-    <div class="col-6 col-md-3">
-        <div class="stat-card">
-            <div class="stat-icon blue"><i class="fas fa-calendar-day"></i></div>
-            <div>
-                <div class="stat-value">{{ total_sessions_today }}</div>
-                <div class="stat-label">{% trans "Sessions Today" %}</div>
+    <!-- Top Revenue Snapshot -->
+    <div class="row mb-4">
+        <div class="col-md-6">
+            <div class="card bg-primary text-white">
+                <div class="card-body">
+                    <h5 class="card-title"><i class="fas fa-coins me-2"></i>{% trans "Earned Today" %}</h5>
+                    <h2 class="mb-0">${{ metrics.today_earned }}</h2>
+                </div>
+            </div>
+        </div>
+        <div class="col-md-6">
+            <div class="card bg-success text-white">
+                <div class="card-body">
+                    <h5 class="card-title"><i class="fas fa-wallet me-2"></i>{% trans "Earned This Week" %}</h5>
+                    <h2 class="mb-0">${{ metrics.week_earned }}</h2>
+                </div>
             </div>
         </div>
     </div>
-    <div class="col-6 col-md-3">
-        <div class="stat-card">
-            <div class="stat-icon green"><i class="fas fa-pound-sign"></i></div>
-            <div>
-                <div class="stat-value">{{ today_earnings|floatformat:0 }}</div>
-                <div class="stat-label">{% trans "Today's Earnings (EGP)" %}</div>
-            </div>
-        </div>
-    </div>
-    <div class="col-6 col-md-3">
-        <div class="stat-card">
-            <div class="stat-icon purple"><i class="fas fa-wallet"></i></div>
-            <div>
-                <div class="stat-value">{{ week_earnings|floatformat:0 }}</div>
-                <div class="stat-label">{% trans "This Week (EGP)" %}</div>
-            </div>
-        </div>
-    </div>
-    <div class="col-6 col-md-3">
-        <div class="stat-card">
-            <div class="stat-icon indigo"><i class="fas fa-user-graduate"></i></div>
-            <div>
-                <div class="stat-value">{{ total_students }}</div>
-                <div class="stat-label">{% trans "Active Students" %}</div>
-            </div>
-        </div>
-    </div>
-</div>
 
-<!-- Conflict alerts -->
-{% if conflicts %}
-<div class="alert alert-danger mb-4">
-    <i class="fas fa-exclamation-triangle me-2"></i>
-    <strong>{% trans "Scheduling Conflict!" %}</strong>
-    {{ conflicts|length }} overlapping session{{ conflicts|length|pluralize }} detected today. Please review and resolve.
-</div>
-{% endif %}
-
-<div class="row g-4">
-    <!-- Today's sessions -->
-    <div class="col-lg-7">
-        <div class="card">
-            <div class="card-header">
-                <span><i class="fas fa-clock me-2 text-primary"></i>{% trans "Today's Sessions" %}<small class="fw-normal text-muted">{% trans "(Cairo)" %}</small></span>
-                <a href="{% url 'scheduler:session_create' %}" class="btn btn-sm btn-outline-primary">
-                    <i class="fas fa-plus me-1"></i>{% trans "Add" %}</a>
-            </div>
-            <div class="card-body p-0">
-                {% if today_sessions %}
-                <div class="px-3">
-                    {% for session in today_sessions %}
-                    <div class="session-item">
-                        <div class="session-time">{{ session.start_time|date:"H:i" }}</div>
-                        <div class="session-dot {{ session.status }}"></div>
-                        <div class="flex-grow-1">
-                            <div class="session-name">{{ session.student.name }}</div>
-                            <div class="session-meta">
-                                {{ session.start_time|date:"H:i" }} – {{ session.end_time|date:"H:i" }}
-                                ({{ session.duration_minutes }} min)
-                                {% if session.student.country %}· {{ session.student.country }}{% endif %}
-                                {% if session.is_makeup %}<span class="badge badge-missed ms-1">{% trans "Makeup" %}</span>{% endif %}
-                            </div>
+    <!-- Today's Timeline -->
+    <div class="card shadow-sm mb-4">
+        <div class="card-header bg-white d-flex justify-content-between align-items-center">
+            <h4 class="mb-0">{% trans "Today's Sessions" %}</h4>
+            <form action="{% url 'scheduler:generate_sessions' %}" method="post" class="m-0">
+                {% csrf_token %}
+                <button type="submit" class="btn btn-sm btn-outline-primary"><i class="fas fa-sync-alt me-1"></i>{% trans "Generate Next 4 Weeks" %}</button>
+            </form>
+        </div>
+        <div class="card-body p-0">
+            {% if sessions %}
+                <div class="list-group list-group-flush">
+                {% for session in sessions %}
+                    <div class="list-group-item d-flex justify-content-between align-items-center p-3">
+                        <div>
+                            <h5 class="mb-1 fw-bold">{{ session.start_time|time:"g:i A" }} - {{ session.student.name }}</h5>
+                            <small class="text-muted">{{ session.duration }} mins • ${{ session.price }}</small>
+                            {% if session.status == 'scheduled' %}
+                                <span class="badge bg-secondary ms-2">Scheduled</span>
+                            {% elif session.status == 'attended' %}
+                                <span class="badge bg-success ms-2">Attended</span>
+                            {% elif session.status == 'absent' %}
+                                <span class="badge bg-danger ms-2">No-Show</span>
+                            {% elif session.status == 'excused' %}
+                                <span class="badge bg-warning ms-2">Excused</span>
+                            {% else %}
+                                <span class="badge bg-dark ms-2">Cancelled</span>
+                            {% endif %}
                         </div>
-                        <span class="badge badge-{{ session.status }}">{{ session.get_status_display }}</span>
-                        <a href="{% url 'scheduler:session_detail' session.pk %}" class="btn btn-sm btn-outline-secondary btn-icon">
-                            <i class="fas fa-arrow-right"></i>
-                        </a>
+                        
+                        <!-- 1-Click Fast Actions -->
+                        <div class="d-flex gap-2">
+                            <form action="{% url 'scheduler:update_session_status' session.pk %}" method="post" class="m-0">
+                                {% csrf_token %}
+                                <input type="hidden" name="status" value="attended">
+                                <button type="submit" class="btn btn-outline-success btn-sm" {% if session.status == 'attended' %}disabled{% endif %}><i class="fas fa-check me-1"></i>Attended</button>
+                            </form>
+                            
+                            <form action="{% url 'scheduler:update_session_status' session.pk %}" method="post" class="m-0">
+                                {% csrf_token %}
+                                <input type="hidden" name="status" value="absent">
+                                <button type="submit" class="btn btn-outline-danger btn-sm" {% if session.status == 'absent' %}disabled{% endif %}><i class="fas fa-times me-1"></i>No-Show</button>
+                            </form>
+                            
+                            <form action="{% url 'scheduler:update_session_status' session.pk %}" method="post" class="m-0">
+                                {% csrf_token %}
+                                <input type="hidden" name="status" value="excused">
+                                <button type="submit" class="btn btn-outline-warning btn-sm" {% if session.status == 'excused' %}disabled{% endif %}><i class="fas fa-comment-slash me-1"></i>Excused</button>
+                            </form>
+                        </div>
                     </div>
-                    {% endfor %}
+                {% endfor %}
                 </div>
-                {% else %}
-                <div class="empty-state">
-                    <i class="fas fa-calendar-check"></i>
-                    <h5>{% trans "No sessions today" %}</h5>
-                    <p>{% trans "Enjoy your free day or" %} <a href="{% url 'scheduler:session_create' %}">{% trans "add a session" %}</a>.</p>
+            {% else %}
+                <div class="p-5 text-center text-muted">
+                    <i class="fas fa-mug-hot fa-3x mb-3 text-secondary"></i>
+                    <h5>{% trans "No sessions scheduled for today!" %}</h5>
                 </div>
-                {% endif %}
-            </div>
-        </div>
-    </div>
-
-    <!-- Upcoming + Quick actions -->
-    <div class="col-lg-5">
-        <div class="card mb-4">
-            <div class="card-header">
-                <span><i class="fas fa-forward me-2 text-purple"></i>{% trans "Upcoming Sessions" %}</span>
-            </div>
-            <div class="card-body p-0">
-                {% if upcoming %}
-                <div class="px-3">
-                    {% for session in upcoming %}
-                    <div class="session-item">
-                        <div class="session-time">
-                            {{ session.start_time|date:"M d" }}<br>
-                            <small>{{ session.start_time|date:"H:i" }}</small>
-                        </div>
-                        <div class="session-dot scheduled"></div>
-                        <div class="flex-grow-1">
-                            <div class="session-name">{{ session.student.name }}</div>
-                            <div class="session-meta">
-                                {{ session.duration_minutes }} min
-                                {% if session.student.country %}· {{ session.student.country }}{% endif %}
-                            </div>
-                        </div>
-                        <a href="{% url 'scheduler:session_detail' session.pk %}" class="btn btn-sm btn-outline-secondary btn-icon">
-                            <i class="fas fa-eye"></i>
-                        </a>
-                    </div>
-                    {% endfor %}
-                </div>
-                {% else %}
-                <div class="empty-state py-4">
-                    <i class="fas fa-calendar"></i>
-                    <p class="mb-0">{% trans "No upcoming sessions" %}</p>
-                </div>
-                {% endif %}
-            </div>
-        </div>
-
-        <div class="card">
-            <div class="card-header"><span><i class="fas fa-bolt me-2 text-amber"></i>{% trans "Quick Actions" %}</span></div>
-            <div class="card-body d-grid gap-2">
-                <a href="{% url 'scheduler:session_create' %}?suggest=1" class="btn btn-primary">
-                    <i class="fas fa-magic me-2"></i>{% trans "Find Next Available Slot" %}</a>
-                <a href="{% url 'scheduler:calendar' %}" class="btn btn-outline-primary">
-                    <i class="fas fa-calendar-alt me-2"></i>{% trans "Open Calendar" %}</a>
-                <a href="{% url 'scheduler:student_create' %}" class="btn btn-outline-secondary">
-                    <i class="fas fa-user-plus me-2"></i>{% trans "Add New Student" %}</a>
-                <a href="{% url 'scheduler:reports' %}" class="btn btn-outline-secondary">
-                    <i class="fas fa-file-invoice-dollar me-2"></i>{% trans "View Financial Report" %}</a>
-            </div>
+            {% endif %}
         </div>
     </div>
 </div>
+
+<!-- Add Student Modal -->
+<div class="modal fade" id="addStudentModal" tabindex="-1" aria-hidden="true">
+  <div class="modal-dialog">
+    <div class="modal-content">
+      <div class="modal-header">
+        <h5 class="modal-title">{% trans "Add Student (Fast Setup)" %}</h5>
+        <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+      </div>
+      <form action="{% url 'scheduler:add_student' %}" method="post">
+          <div class="modal-body">
+              {% csrf_token %}
+              {{ student_form.as_p }}
+              
+              <hr>
+              <h6>{% trans "Recurring Schedule" %}</h6>
+              <div id="schedule-rows">
+                  <div class="row mb-2">
+                      <div class="col-6">
+                          <select name="schedule_day_0" class="form-select">
+                              <option value="5">Saturday</option>
+                              <option value="6">Sunday</option>
+                              <option value="0">Monday</option>
+                              <option value="1">Tuesday</option>
+                              <option value="2">Wednesday</option>
+                              <option value="3">Thursday</option>
+                              <option value="4">Friday</option>
+                          </select>
+                      </div>
+                      <div class="col-6">
+                          <input type="time" name="schedule_time_0" class="form-control" required>
+                      </div>
+                  </div>
+              </div>
+              <button type="button" class="btn btn-sm btn-link" onclick="addScheduleRow()">+ Add Another Day</button>
+          </div>
+          <div class="modal-footer">
+            <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Close</button>
+            <button type="submit" class="btn btn-primary">Save & Generate</button>
+          </div>
+      </form>
+    </div>
+  </div>
+</div>
+
+<!-- Add Manual Session Modal -->
+<div class="modal fade" id="addSessionModal" tabindex="-1" aria-hidden="true">
+  <div class="modal-dialog">
+    <div class="modal-content">
+      <div class="modal-header">
+        <h5 class="modal-title">{% trans "Drop Manual Session" %}</h5>
+        <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+      </div>
+      <form action="{% url 'scheduler:add_session' %}" method="post">
+          <div class="modal-body">
+              {% csrf_token %}
+              {{ session_form.as_p }}
+          </div>
+          <div class="modal-footer">
+            <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Close</button>
+            <button type="submit" class="btn btn-primary">Add to Calendar</button>
+          </div>
+      </form>
+    </div>
+  </div>
+</div>
+
+{% endblock %}
+
+{% block extra_js %}
+<script>
+    let scheduleCount = 1;
+    function addScheduleRow() {
+        const container = document.getElementById('schedule-rows');
+        const row = document.createElement('div');
+        row.className = 'row mb-2';
+        row.innerHTML = `
+            <div class="col-6">
+                <select name="schedule_day_${scheduleCount}" class="form-select">
+                    <option value="5">Saturday</option>
+                    <option value="6">Sunday</option>
+                    <option value="0">Monday</option>
+                    <option value="1">Tuesday</option>
+                    <option value="2">Wednesday</option>
+                    <option value="3">Thursday</option>
+                    <option value="4">Friday</option>
+                </select>
+            </div>
+            <div class="col-6">
+                <input type="time" name="schedule_time_${scheduleCount}" class="form-control" required>
+            </div>
+        `;
+        container.appendChild(row);
+        scheduleCount++;
+    }
+</script>
 {% endblock %}

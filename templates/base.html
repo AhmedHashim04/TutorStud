@@ -20,37 +20,18 @@
         <span class="brand-text">TutorSys</span>
     </div>
     <nav class="sidebar-nav">
-        <a href="{% url 'scheduler:dashboard' %}" class="nav-item {% if request.resolver_match.url_name == 'dashboard' %}active{% endif %}"><i class="fas fa-chart-pie"></i><span>{% trans "Dashboard" %}</span></a>
-        <a href="{% url 'scheduler:student_list' %}" class="nav-item {% if 'student' in request.resolver_match.url_name %}active{% endif %}"><i class="fas fa-user-graduate"></i><span>{% trans "Students" %}</span></a>
-        <a href="{% url 'scheduler:calendar' %}" class="nav-item {% if 'calendar' in request.resolver_match.url_name %}active{% endif %}"><i class="fas fa-calendar-alt"></i><span>{% trans "Calendar" %}</span></a>
-        <a href="{% url 'scheduler:session_list' %}" class="nav-item {% if 'session' in request.resolver_match.url_name and 'calendar' not in request.resolver_match.url_name %}active{% endif %}"><i class="fas fa-clock"></i><span>{% trans "Sessions" %}</span></a>
-        <div class="nav-divider">{% trans "Reports" %}</div>
-        <a href="{% url 'scheduler:reports' %}" class="nav-item {% if request.resolver_match.url_name == 'reports' %}active{% endif %}"><i class="fas fa-file-invoice-dollar"></i><span>{% trans "Financial" %}</span></a>
-        <a href="{% url 'scheduler:analytics' %}" class="nav-item {% if request.resolver_match.url_name == 'analytics' %}active{% endif %}"><i class="fas fa-chart-line"></i><span>{% trans "Analytics" %}</span></a>
-        <div class="nav-divider">{% trans "Settings" %}</div>
-        <a href="{% url 'scheduler:working_hours' %}" class="nav-item {% if 'working_hours' in request.resolver_match.url_name %}active{% endif %}"><i class="fas fa-business-time"></i><span>{% trans "Working Hours" %}</span></a>
-        <a href="{% url 'scheduler:exception_days' %}" class="nav-item {% if 'exception' in request.resolver_match.url_name %}active{% endif %}"><i class="fas fa-calendar-times"></i><span>{% trans "Exceptions" %}</span></a>
-        <a href="{% url 'scheduler:prayer_times' %}" class="nav-item {% if 'prayer' in request.resolver_match.url_name %}active{% endif %}"><i class="fas fa-mosque"></i><span>{% trans "Prayer Times" %}</span></a>
+        <a href="{% url 'scheduler:dashboard' %}" class="nav-item active"><i class="fas fa-chart-pie"></i><span>{% trans "Dashboard" %}</span></a>
+        <a href="{% url 'scheduler:settings' %}" class="nav-item"><i class="fas fa-cog"></i><span>{% trans "Settings" %}</span></a>
     </nav>
-    <div class="sidebar-footer"><a href="/admin/" class="nav-item"><i class="fas fa-cog"></i><span>{% trans "Admin Panel" %}</span></a></div>
 </div>
 
 <div class="main-wrapper">
     <header class="topbar">
         <button class="sidebar-toggle" onclick="toggleSidebar()"><i class="fas fa-bars"></i></button>
-        <div class="topbar-title">{% block page_title %}{% endblock %}</div>
+        <div class="topbar-title">{% block page_title %}Command Center{% endblock %}</div>
         <div class="topbar-actions d-flex align-items-center gap-2">
-            <form action="{% url 'set_language' %}" method="post" class="d-inline-flex align-items-center gap-1">
-                {% csrf_token %}
-                <input type="hidden" name="next" value="{{ request.get_full_path }}">
-                {% if LANGUAGE_CODE == 'ar' or LANGUAGE_CODE|slice:":2" == 'ar' %}
-                <button type="submit" name="language" value="en" class="btn btn-sm btn-outline-secondary">English</button>
-                {% else %}
-                <button type="submit" name="language" value="ar" class="btn btn-sm btn-outline-secondary">العربية</button>
-                {% endif %}
-            </form>
-            <a href="{% url 'scheduler:session_create' %}?suggest=1" class="btn btn-primary btn-sm"><i class="fas fa-plus me-1"></i>{% trans "New Session" %}</a>
-            <a href="{% url 'scheduler:student_create' %}" class="btn btn-outline-secondary btn-sm ms-2"><i class="fas fa-user-plus me-1"></i>{% trans "New Student" %}</a>
+            <button class="btn btn-outline-secondary btn-sm" data-bs-toggle="modal" data-bs-target="#addStudentModal"><i class="fas fa-user-plus me-1"></i>{% trans "Add Student" %}</button>
+            <button class="btn btn-primary btn-sm ms-2" data-bs-toggle="modal" data-bs-target="#addSessionModal"><i class="fas fa-plus me-1"></i>{% trans "Manual Session" %}</button>
         </div>
     </header>
 
