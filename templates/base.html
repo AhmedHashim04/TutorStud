@@ -39,13 +39,14 @@
         <button class="sidebar-toggle" onclick="toggleSidebar()"><i class="fas fa-bars"></i></button>
         <div class="topbar-title">{% block page_title %}{% endblock %}</div>
         <div class="topbar-actions d-flex align-items-center gap-2">
-            <form action="{% url 'set_language' %}" method="post" class="d-inline-flex align-items-center">
+            <form action="{% url 'set_language' %}" method="post" class="d-inline-flex align-items-center gap-1">
                 {% csrf_token %}
                 <input type="hidden" name="next" value="{{ request.get_full_path }}">
-                <select name="language" class="form-select form-select-sm" onchange="this.form.submit()">
-                    <option value="en" {% if LANGUAGE_CODE == 'en' or LANGUAGE_CODE|slice:":2" == 'en' %}selected{% endif %}>English</option>
-                    <option value="ar" {% if LANGUAGE_CODE == 'ar' or LANGUAGE_CODE|slice:":2" == 'ar' %}selected{% endif %}>العربية</option>
-                </select>
+                {% if LANGUAGE_CODE == 'ar' or LANGUAGE_CODE|slice:":2" == 'ar' %}
+                <button type="submit" name="language" value="en" class="btn btn-sm btn-outline-secondary">English</button>
+                {% else %}
+                <button type="submit" name="language" value="ar" class="btn btn-sm btn-outline-secondary">العربية</button>
+                {% endif %}
             </form>
             <a href="{% url 'scheduler:session_create' %}?suggest=1" class="btn btn-primary btn-sm"><i class="fas fa-plus me-1"></i>{% trans "New Session" %}</a>
             <a href="{% url 'scheduler:student_create' %}" class="btn btn-outline-secondary btn-sm ms-2"><i class="fas fa-user-plus me-1"></i>{% trans "New Student" %}</a>
