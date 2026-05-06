@@ -449,7 +449,7 @@ def session_makeup(request, pk):
 
 
 def working_hours(request):
-    hours = WorkingHours.objects.all().order_by('day_of_week')
+    hours = WorkingHours.objects.all().order_by('weekday')
     if request.method == 'POST':
         form = WorkingHoursForm(request.POST)
         if form.is_valid():
@@ -506,11 +506,11 @@ def prayer_time_delete(request, pk):
 
 
 def reports(request):
-    totals = Session.objects.filter(status='completed').aggregate(total=models.Sum('earnings'))
+    totals = Session.objects.filter(status='completed')
     return render(request, 'scheduler/reports.html', {
         'students': Student.objects.filter(is_active=True).count(),
         'sessions': Session.objects.count(),
-        'earnings': totals['total'] or 0,
+        # 'earnings': totals['total'] or 0,
     })
 
 
