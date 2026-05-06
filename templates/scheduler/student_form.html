@@ -22,8 +22,10 @@
     display: block;
 }
 
-.form-shell .form-control,
-.form-shell .form-select,
+.form-shell input[class*="form-control"],
+.form-shell select[class*="form-control"],
+.form-shell select[class*="form-select"],
+.form-shell textarea[class*="form-control"],
 .form-shell textarea,
 .form-shell input[type="date"],
 .form-shell input[type="time"],
@@ -32,54 +34,64 @@
 .form-shell input[type="text"],
 .form-shell input[type="email"],
 .form-shell input[type="tel"] {
-    width: 100%;
-    min-height: 48px;
-    padding: 12px 16px;
-    border-radius: 10px;
-    border: 2px solid var(--border);
-    background: #f8fafc;
-    color: var(--text);
-    font-size: 14px;
-    font-family: inherit;
-    transition: all 0.2s ease;
-    box-shadow: 0 1px 3px rgba(0, 0, 0, 0.05);
+    width: 100% !important;
+    min-height: 48px !important;
+    padding: 12px 16px !important;
+    border-radius: 10px !important;
+    border: 2px solid var(--border) !important;
+    background: #f8fafc !important;
+    color: var(--text) !important;
+    font-size: 14px !important;
+    font-family: inherit !important;
+    transition: all 0.2s ease !important;
+    box-shadow: 0 1px 3px rgba(0, 0, 0, 0.05) !important;
 }
 
-.form-shell .form-control:hover,
-.form-shell .form-select:hover,
+.form-shell input[class*="form-control"]:hover,
+.form-shell select[class*="form-control"]:hover,
+.form-shell select[class*="form-select"]:hover,
+.form-shell textarea[class*="form-control"]:hover,
 .form-shell textarea:hover,
 .form-shell input:hover {
-    border-color: #cbd5e1;
-    background: #ffffff;
+    border-color: #cbd5e1 !important;
+    background: #ffffff !important;
 }
 
-.form-shell .form-control:focus,
-.form-shell .form-select:focus,
+.form-shell input[class*="form-control"]:focus,
+.form-shell select[class*="form-control"]:focus,
+.form-shell select[class*="form-select"]:focus,
+.form-shell textarea[class*="form-control"]:focus,
 .form-shell textarea:focus,
 .form-shell input:focus {
-    outline: none;
-    border-color: var(--primary);
-    background: #ffffff;
-    box-shadow: 0 0 0 3px rgba(99, 102, 241, 0.15), 0 0 0 6px rgba(99, 102, 241, 0.05);
+    outline: none !important;
+    border-color: var(--primary) !important;
+    background: #ffffff !important;
+    box-shadow: 0 0 0 3px rgba(99, 102, 241, 0.15), 0 0 0 6px rgba(99, 102, 241, 0.05) !important;
 }
 
-.form-shell .form-select {
-    appearance: none;
-    background-image: url("data:image/svg+xml,%3csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 16 16'%3e%3cpath fill='none' stroke='%236366f1' stroke-linecap='round' stroke-linejoin='round' stroke-width='2.5' d='M2 5l6 6 6-6'/%3e%3c/svg%3e");
-    background-repeat: no-repeat;
-    background-position: right 14px center;
-    background-size: 16px 14px;
-    padding-right: 40px;
-    cursor: pointer;
+/* Select and dropdown styling */
+.form-shell select[class*="form-select"],
+.form-shell select[class*="form-control"] {
+    appearance: none !important;
+    -webkit-appearance: none !important;
+    -moz-appearance: none !important;
+    background-image: url("data:image/svg+xml,%3csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 16 16'%3e%3cpath fill='none' stroke='%236366f1' stroke-linecap='round' stroke-linejoin='round' stroke-width='2.5' d='M2 5l6 6 6-6'/%3e%3c/svg%3e") !important;
+    background-repeat: no-repeat !important;
+    background-position: right 14px center !important;
+    background-size: 16px 14px !important;
+    padding-right: 40px !important;
+    cursor: pointer !important;
 }
 
-.form-shell .form-select option {
+.form-shell select[class*="form-select"] option,
+.form-shell select[class*="form-control"] option {
     padding: 10px 14px;
     background: #ffffff;
     color: var(--text);
 }
 
-.form-shell .form-select option:checked {
+.form-shell select[class*="form-select"] option:checked,
+.form-shell select[class*="form-control"] option:checked {
     background: linear-gradient(#6366f1, #6366f1);
     background-color: #6366f1 !important;
     color: white;
@@ -118,10 +130,10 @@
 .form-shell input:disabled,
 .form-shell select:disabled,
 .form-shell textarea:disabled {
-    background-color: #f1f5f9;
-    border-color: #e2e8f0;
-    color: #94a3b8;
-    cursor: not-allowed;
+    background-color: #f1f5f9 !important;
+    border-color: #e2e8f0 !important;
+    color: #94a3b8 !important;
+    cursor: not-allowed !important;
 }
 
 .form-shell .text-danger {

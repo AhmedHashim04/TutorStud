@@ -70,8 +70,25 @@ TIMEZONE_CHOICES = [
 ]
 
 class StudentForm(forms.ModelForm):
-    country = forms.ChoiceField(choices=COUNTRY_CHOICES, required=True, label=_('Country'))
-    timezone = forms.ChoiceField(choices=TIMEZONE_CHOICES, initial='Africa/Cairo', help_text=_('The student\'s local timezone. Auto-fills from country, but can be changed.'), label=_('Timezone'))
+    country = forms.ChoiceField(
+        choices=COUNTRY_CHOICES, 
+        required=True, 
+        label=_('Country'),
+        widget=forms.Select(attrs={
+            'class': 'form-select form-control',
+            'style': 'appearance: none; padding-right: 40px;'
+        })
+    )
+    timezone = forms.ChoiceField(
+        choices=TIMEZONE_CHOICES, 
+        initial='Africa/Cairo', 
+        help_text=_('The student\'s local timezone. Auto-fills from country, but can be changed.'), 
+        label=_('Timezone'),
+        widget=forms.Select(attrs={
+            'class': 'form-select form-control',
+            'style': 'appearance: none; padding-right: 40px;'
+        })
+    )
 
     class Meta:
         model = Student
@@ -115,6 +132,10 @@ class SubscriptionForm(forms.ModelForm):
             'start_date': forms.DateInput(attrs={'type': 'date'}),
             'sessions_per_week': forms.NumberInput(attrs={'min': 1, 'placeholder': _('e.g. 3')}),
             'hourly_rate': forms.NumberInput(attrs={'step': '0.01', 'min': '0', 'placeholder': _('0.00')}),
+            'session_duration': forms.Select(attrs={
+                'class': 'form-select form-control',
+                'style': 'appearance: none; padding-right: 40px;'
+            }),
         }
         labels = {'is_active': _('Active subscription')}
 
@@ -144,7 +165,12 @@ class SessionForm(forms.ModelForm):
     class Meta:
         model = Session
         fields = ['student', 'start_time', 'end_time', 'status', 'is_makeup', 'original_session', 'is_recurring', 'notes']
-        widgets = {'notes': forms.Textarea(attrs={'rows': 2})}
+        widgets = {
+            'student': forms.Select(attrs={'class': 'form-select form-control'}),
+            'status': forms.Select(attrs={'class': 'form-select form-control'}),
+            'original_session': forms.Select(attrs={'class': 'form-select form-control'}),
+            'notes': forms.Textarea(attrs={'rows': 2})
+        }
 
     def __init__(self, *args, **kwargs):
         from .services import to_cairo
@@ -159,10 +185,18 @@ class SessionForm(forms.ModelForm):
                 self.initial['end_time'] = to_cairo(self.instance.end_time).strftime('%Y-%m-%dT%H:%M')
 
 class QuickSessionForm(forms.Form):
-    student = forms.ModelChoiceField(queryset=Student.objects.filter(is_active=True), empty_label=_('Select student…'))
+    student = forms.ModelChoiceField(
+        queryset=Student.objects.filter(is_active=True), 
+        empty_label=_('Select student…'),
+        widget=forms.Select(attrs={'class': 'form-select form-control'})
+    )
     date = forms.DateField(widget=forms.DateInput(attrs={'type': 'date'}), initial=timezone.localdate)
     start_time = forms.TimeField(widget=forms.TimeInput(attrs={'type': 'time'}), help_text=_('Cairo time (Africa/Cairo)'))
-    duration = forms.ChoiceField(choices=[(30, _('30 minutes')), (60, _('60 minutes'))], initial=60)
+    duration = forms.ChoiceField(
+        choices=[(30, _('30 minutes')), (60, _('60 minutes'))], 
+        initial=60,
+        widget=forms.Select(attrs={'class': 'form-select form-control'})
+    )
     is_recurring = forms.BooleanField(required=False, label=_('Mark as recurring'))
     notes = forms.CharField(widget=forms.Textarea(attrs={'rows': 2, 'placeholder': _('Optional session notes…')}), required=False)
 
