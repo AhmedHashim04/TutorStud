@@ -7,6 +7,10 @@ urlpatterns = [
     # Main Command Center
     path('', views.dashboard, name='dashboard'),
     
+    # Calendar System
+    path('calendar/', views.calendar_view, name='calendar'),
+    path('api/calendar-events/', views.api_calendar_events, name='api_calendar_events'),
+    
     # Students / Mini OS
     path('students/', views.student_list, name='student_list'),
     path('students/<int:pk>/', views.student_detail, name='student_detail'),

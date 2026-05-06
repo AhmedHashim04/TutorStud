@@ -112,8 +112,8 @@ class Student(models.Model):
     def timezone_difference_str(self):
         """Returns string like '+1 hour ahead' or 'Same time'."""
         now = timezone.now()
-        tutor_offset = CAIRO_TZ.utcoffset(now).total_seconds()
-        student_offset = self.student_timezone.utcoffset(now).total_seconds()
+        tutor_offset = now.astimezone(CAIRO_TZ).utcoffset().total_seconds()
+        student_offset = now.astimezone(self.student_timezone).utcoffset().total_seconds()
         diff_hours = (student_offset - tutor_offset) / 3600
         
         if diff_hours == 0:

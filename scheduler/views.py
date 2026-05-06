@@ -6,7 +6,7 @@ from datetime import timedelta
 from .models import Session, Student, RecurringSchedule, GlobalSettings, PrayerTime
 from .forms import StudentForm, ManualSessionForm, GlobalSettingsForm
 from .services import generate_sessions_for_student, generate_sessions_for_all_active_students, CAIRO_TZ, fetch_cairo_prayer_times
-
+from datetime import datetime
 def get_revenue_metrics():
     """Calculate simple revenue metrics for the dashboard."""
     today = timezone.localdate(timezone=CAIRO_TZ)
@@ -22,6 +22,10 @@ def get_revenue_metrics():
 
 def dashboard(request):
     """The Command Center Main View."""
+    # Hook: Auto-regenerate schedules for active students who ran out of sessions
+    from .services import auto_regenerate_empty_schedules
+    auto_regenerate_empty_schedules()
+    
     today = timezone.localdate(timezone=CAIRO_TZ)
     # Today's sessions
     today_sessions = Session.objects.filter(start_time__date=today).order_by('start_time')
@@ -123,17 +127,18 @@ def add_session(request):
             from .services import validate_session
             start_dt = form.cleaned_data['start_time']
             duration = form.cleaned_data['duration']
+            student = form.cleaned_data['student']
             
             # If price was blank, fallback to student default
             if not form.cleaned_data.get('price'):
-                form.instance.price = form.cleaned_data['student'].session_price
+                form.instance.price = student.session_price
             
             # If duration was blank, fallback
             if not duration:
-                duration = form.cleaned_data['student'].session_duration
+                duration = student.session_duration
                 form.instance.duration = duration
                 
-            errors = validate_session(start_dt, duration)
+            errors = validate_session(start_dt, duration, student_id=student.id)
             if not errors:
                 form.save()
                 messages.success(request, "Session added to calendar.")
@@ -213,3 +218,70 @@ def fetch_prayers(request):
         else:
             messages.info(request, "Prayer times are already up to date.")
     return redirect('scheduler:settings')
+
+from django.http import JsonResponse
+
+def calendar_view(request):
+    """Renders the FullCalendar JS page."""
+    context = {
+        'student_form': StudentForm(),
+        'session_form': ManualSessionForm(),
+        'students': Student.objects.filter(is_active=True),
+    }
+    return render(request, 'scheduler/calendar.html', context)
+
+def api_calendar_events(request):
+    """Returns JSON array of events for FullCalendar."""
+    start_str = request.GET.get('start')
+    end_str = request.GET.get('end')
+    
+    events = []
+    
+    if start_str and end_str:
+        # Filter sessions within the range
+        try:
+            from django.utils.dateparse import parse_datetime
+            start_dt = parse_datetime(start_str)
+            end_dt = parse_datetime(end_str)
+            
+            # If parse_datetime returns a naive datetime, make it aware (UTC)
+            if start_dt and timezone.is_naive(start_dt):
+                start_dt = timezone.make_aware(start_dt, timezone.utc)
+            if end_dt and timezone.is_naive(end_dt):
+                end_dt = timezone.make_aware(end_dt, timezone.utc)
+                
+            sessions = Session.objects.filter(start_time__gte=start_dt, start_time__lt=end_dt)
+        except Exception:
+            sessions = Session.objects.all()
+    else:
+        sessions = Session.objects.all()
+        
+    for s in sessions:
+        # Determine color based on status
+        color = '#6c757d' # scheduled (secondary)
+        if s.status == 'attended':
+            color = '#198754' # success
+        elif s.status == 'absent':
+            color = '#dc3545' # danger
+        elif s.status == 'excused':
+            color = '#ffc107' # warning
+            
+        tutor_time_str = s.tutor_time.strftime("%I:%M %p")
+        student_time_str = s.student_time.strftime("%I:%M %p")
+        country_code = dict(s.student._meta.get_field('country').choices).get(s.student.country, s.student.country)[:2]
+            
+        events.append({
+            'id': s.id,
+            'title': s.student.name,
+            'start': s.start_time.isoformat(),
+            'end': s.end_time.isoformat(),
+            'color': color,
+            'extendedProps': {
+                'status': s.get_status_display(),
+                'duration': s.duration,
+                'tutorTime': f"🇪🇬 {tutor_time_str}",
+                'studentTime': f"{country_code} {student_time_str}"
+            }
+        })
+        
+    return JsonResponse(events, safe=False)

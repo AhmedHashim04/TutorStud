@@ -25,6 +25,7 @@
     </div>
     <nav class="sidebar-nav">
         <a href="{% url 'scheduler:dashboard' %}" class="nav-item {% if request.resolver_match.url_name == 'dashboard' %}active{% endif %}"><i class="fas fa-chart-pie"></i><span>{% trans "Dashboard" %}</span></a>
+        <a href="{% url 'scheduler:calendar' %}" class="nav-item {% if request.resolver_match.url_name == 'calendar' %}active{% endif %}"><i class="fas fa-calendar-alt"></i><span>{% trans "Calendar" %}</span></a>
         <a href="{% url 'scheduler:student_list' %}" class="nav-item {% if 'student' in request.resolver_match.url_name %}active{% endif %}"><i class="fas fa-user-graduate"></i><span>{% trans "Students" %}</span></a>
         <a href="{% url 'scheduler:settings' %}" class="nav-item {% if request.resolver_match.url_name == 'settings' %}active{% endif %}"><i class="fas fa-cog"></i><span>{% trans "Settings" %}</span></a>
     </nav>

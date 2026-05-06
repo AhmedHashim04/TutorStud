@@ -19,12 +19,12 @@ def ensure_aware(dt):
 def sessions_overlap(start1, end1, start2, end2):
     return start1 < end2 and start2 < end1
 
-def validate_session(start_time, duration_minutes, exclude_session_id=None):
+def validate_session(start_time, duration_minutes, exclude_session_id=None, student_id=None):
     """
     Validate if a session slot is available.
     Returns a list of error strings (empty list means valid).
     """
-    from .models import Session, PrayerTime, GlobalSettings
+    from .models import Session, PrayerTime, GlobalSettings, RecurringSchedule
     errors = []
     start_time = ensure_aware(start_time)
     end_time = start_time + timedelta(minutes=duration_minutes)
@@ -52,12 +52,37 @@ def validate_session(start_time, duration_minutes, exclude_session_id=None):
     if exclude_session_id:
         conflicting_sessions = conflicting_sessions.exclude(pk=exclude_session_id)
 
-    # We have to do a programmatic check to ensure we use the end_time property correctly
     for s in conflicting_sessions:
         if sessions_overlap(start_time, end_time, s.start_time, s.end_time):
-            if s.status != 'cancelled_by_teacher' and s.status != 'excused':
-                errors.append(f"Conflicts with {s.student.name}'s session at {s.start_time.strftime('%H:%M')}.")
+            if s.status not in ['cancelled_by_teacher', 'excused']:
+                # If they overlap, only allow it if it's the exact same student (e.g. updating a session)
+                # But wait, even if it's the same student, double booking themselves is weird, but we handle it.
+                if student_id and s.student.id == student_id:
+                    pass # Same student overlap, maybe they are extending it. We should probably block it too.
+                
+                errors.append(f"This time slot is already reserved for another session ({s.student.name}).")
                 break # Just show one conflict
+
+    # 3. Recurring Schedule Protection (Strict)
+    target_weekday = start_time.weekday()
+    target_start_time_cairo = to_cairo(start_time).time()
+    
+    recurring_rules = RecurringSchedule.objects.filter(
+        student__is_active=True,
+        weekday=target_weekday
+    )
+    
+    for rule in recurring_rules:
+        # Skip if it's the same student's rule
+        if student_id and rule.student.id == student_id:
+            continue
+            
+        rule_start_dt = CAIRO_TZ.localize(datetime.combine(d, rule.start_time))
+        rule_end_dt = rule_start_dt + timedelta(minutes=rule.student.session_duration)
+        
+        if sessions_overlap(start_time, end_time, rule_start_dt, rule_end_dt):
+            errors.append(f"This time slot is protected by a recurring reservation ({rule.student.name}).")
+            break
 
     return errors
 
@@ -129,6 +154,27 @@ def generate_sessions_for_all_active_students(weeks=4):
         all_errors.extend(errs)
         
     return total_created, all_errors
+
+
+def auto_regenerate_empty_schedules():
+    """
+    Checks active students. If a student has ZERO future scheduled sessions,
+    it automatically generates the next 4 weeks for them.
+    This fulfills the requirement: 'If the student is still marked as active and all current 4 sessions are completed, automatically generate the next 4 sessions.'
+    """
+    from .models import Student, Session
+    now = timezone.now()
+    
+    active_students = Student.objects.filter(is_active=True)
+    for student in active_students:
+        future_count = Session.objects.filter(
+            student=student,
+            status='scheduled',
+            start_time__gte=now
+        ).count()
+        
+        if future_count == 0:
+            generate_sessions_for_student(student, weeks=4)
 
 
 def purge_future_sessions_for_inactive_student(student):
