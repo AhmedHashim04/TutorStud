@@ -1,5 +1,5 @@
 from django.contrib import admin
-from .models import Student, Subscription, WorkingHours, WorkingHoursRange, ExceptionDay, PrayerTime, Session
+from .models import Student, Subscription, StudentEnrollment, GlobalConfig, WorkingHours, WorkingHoursRange, ExceptionDay, PrayerTime, Session, SessionAttendance, SessionPayment, RecurringSchedule
 
 
 @admin.register(Student)
@@ -9,10 +9,21 @@ class StudentAdmin(admin.ModelAdmin):
     search_fields = ['name']
 
 
-@admin.register(Subscription)
-class SubscriptionAdmin(admin.ModelAdmin):
-    list_display = ['student', 'sessions_per_week', 'session_duration', 'hourly_rate', 'is_active']
-    list_filter = ['is_active', 'session_duration']
+@admin.register(GlobalConfig)
+class GlobalConfigAdmin(admin.ModelAdmin):
+    list_display = ['default_session_price', 'default_session_duration', 'cancellation_window_hours', 'allow_makeup_sessions', 'allow_extra_sessions', 'updated_at']
+
+
+@admin.register(StudentEnrollment)
+class StudentEnrollmentAdmin(admin.ModelAdmin):
+    list_display = ['student', 'session_price', 'session_duration', 'cancellation_window_hours', 'is_active', 'start_date']
+    list_filter = ['is_active', 'session_duration', 'allow_makeup_sessions', 'allow_extra_sessions']
+
+
+@admin.register(RecurringSchedule)
+class RecurringScheduleAdmin(admin.ModelAdmin):
+    list_display = ['student', 'day_of_week', 'start_time', 'duration', 'is_active']
+    list_filter = ['day_of_week', 'is_active']
 
 
 @admin.register(WorkingHours)
@@ -39,6 +50,18 @@ class PrayerTimeAdmin(admin.ModelAdmin):
 
 @admin.register(Session)
 class SessionAdmin(admin.ModelAdmin):
-    list_display = ['student', 'start_time', 'end_time', 'status', 'is_makeup']
-    list_filter = ['status', 'is_makeup', 'is_recurring']
+    list_display = ['student', 'start_time', 'end_time', 'status', 'session_type', 'is_makeup']
+    list_filter = ['status', 'session_type', 'is_makeup', 'is_recurring']
     search_fields = ['student__name']
+
+
+@admin.register(SessionAttendance)
+class SessionAttendanceAdmin(admin.ModelAdmin):
+    list_display = ['session', 'attendance_status', 'marked_at']
+    list_filter = ['attendance_status']
+
+
+@admin.register(SessionPayment)
+class SessionPaymentAdmin(admin.ModelAdmin):
+    list_display = ['session', 'base_amount', 'final_amount', 'rule_applied', 'is_paid']
+    list_filter = ['is_paid', 'rule_applied']

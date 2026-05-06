@@ -16,7 +16,7 @@ class Command(BaseCommand):
     def handle(self, *args, **options):
         from scheduler.models import (
             Student, Subscription, WorkingHours, ExceptionDay,
-            PrayerTime, Session
+            PrayerTime, Session, GlobalConfig
         )
 
         self.stdout.write('🌱 Seeding sample data...')
@@ -55,16 +55,26 @@ class Command(BaseCommand):
                 )
         self.stdout.write('  ✓ Prayer times created')
 
-        # Students + subscriptions
+        # Students + enrollments
+        GlobalConfig.objects.get_or_create(
+            id=1,
+            defaults={
+                'default_session_price': Decimal('200'),
+                'default_session_duration': 60,
+                'cancellation_window_hours': 2,
+                'allow_makeup_sessions': True,
+                'allow_extra_sessions': True,
+            },
+        )
         students_data = [
-            ('Ahmed Hassan',     3, 60, Decimal('200')),
-            ('Sara Mohamed',     2, 60, Decimal('180')),
-            ('Omar Ali',         4, 30, Decimal('150')),
-            ('Nour Ibrahim',     3, 60, Decimal('200')),
-            ('Youssef Khaled',   2, 60, Decimal('170')),
+            ('Ahmed Hassan',     200, 60),
+            ('Sara Mohamed',     180, 60),
+            ('Omar Ali',         150, 30),
+            ('Nour Ibrahim',     200, 60),
+            ('Youssef Khaled',   170, 60),
         ]
         students = []
-        for name, spw, dur, rate in students_data:
+        for name, price, dur in students_data:
             student, _ = Student.objects.get_or_create(
                 name=name,
                 defaults={'is_active': True}
@@ -73,9 +83,12 @@ class Command(BaseCommand):
                 student=student,
                 is_active=True,
                 defaults={
-                    'sessions_per_week': spw,
+                    'session_price': Decimal(price),
                     'session_duration': dur,
-                    'hourly_rate': rate,
+                    'cancellation_window_hours': 2,
+                    'allow_makeup_sessions': True,
+                    'allow_extra_sessions': True,
+                    'start_date': today,
                 }
             )
             students.append(student)
@@ -124,10 +137,11 @@ class Command(BaseCommand):
             start_dt = CAIRO_TZ.localize(naive_start)
             end_dt = start_dt + timedelta(minutes=duration)
             student = students[student_idx]
+            enrollment = student.active_subscription
             _, made = Session.objects.get_or_create(
                 student=student,
                 start_time=start_dt,
-                defaults={'end_time': end_dt, 'status': status}
+                defaults={'enrollment': enrollment, 'end_time': end_dt, 'status': status, 'session_type': 'regular', 'is_recurring': status == 'scheduled'}
             )
             if made:
                 created += 1
@@ -142,8 +156,10 @@ class Command(BaseCommand):
                 student=missed.student,
                 start_time=makeup_start,
                 defaults={
+                    'enrollment': missed.enrollment or missed.student.active_subscription,
                     'end_time': makeup_start + timedelta(minutes=missed.duration_minutes),
                     'status': 'scheduled',
+                    'session_type': 'makeup',
                     'is_makeup': True,
                     'original_session': missed,
                     'notes': f'Makeup for missed session on {missed.start_time.date()}',

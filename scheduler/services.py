@@ -23,6 +23,7 @@ Prayer-time blocking rule:
   (Default: 10 min grace, then 15-min blocked window → until adhan+25)
 """
 from datetime import datetime, timedelta, time
+from decimal import Decimal
 from django.utils import timezone
 from django.conf import settings
 import pytz
@@ -321,6 +322,7 @@ def generate_sessions_from_schedule(schedule, weeks=4, from_date=None):
 
         Session.objects.create(
             student=schedule.student,
+            enrollment=schedule.subscription,
             start_time=start_dt,
             end_time=end_dt,
             status='scheduled',
@@ -543,3 +545,119 @@ def get_occupancy_rate(start_date, end_date):
     if total_available.total_seconds() == 0:
         return 0
     return round(total_booked.total_seconds() / total_available.total_seconds() * 100, 1)
+
+
+class PaymentService:
+    @staticmethod
+    def calculate_session_payment(session):
+        """Return a payment decision for a single session."""
+        price = Decimal('0')
+        if session.enrollment:
+            price = session.enrollment.session_price
+        else:
+            active = getattr(session.student, 'active_subscription', None)
+            if active:
+                price = active.session_price
+
+        if session.status == 'cancelled':
+            if session.cancelled_by == 'teacher':
+                return {'is_paid': False, 'amount': Decimal('0'), 'rule': 'cancelled_by_teacher'}
+            if session.cancelled_by == 'student' and session.can_be_cancelled_free():
+                return {'is_paid': False, 'amount': Decimal('0'), 'rule': 'cancelled_on_time'}
+            if session.cancelled_by == 'student':
+                return {'is_paid': True, 'amount': price, 'rule': 'cancelled_late'}
+
+        if session.status == 'rescheduled':
+            return {'is_paid': False, 'amount': Decimal('0'), 'rule': 'rescheduled'}
+
+        if session.status == 'completed':
+            return {'is_paid': True, 'amount': price, 'rule': 'attended_or_absent'}
+
+        return {'is_paid': False, 'amount': Decimal('0'), 'rule': 'pending'}
+
+    @staticmethod
+    def apply_payment(session):
+        from .models import SessionPayment
+
+        decision = PaymentService.calculate_session_payment(session)
+        payment, _ = SessionPayment.objects.get_or_create(
+            session=session,
+            defaults={'base_amount': decision['amount'], 'final_amount': decision['amount'], 'rule_applied': decision['rule'], 'is_paid': decision['is_paid']},
+        )
+        payment.base_amount = decision['amount']
+        payment.final_amount = decision['amount']
+        payment.rule_applied = decision['rule']
+        payment.is_paid = decision['is_paid']
+        payment.save()
+        return payment
+
+
+class AnalyticsService:
+    @staticmethod
+    def get_dashboard_metrics(start_date, end_date):
+        from .models import Session
+
+        sessions = Session.objects.filter(start_time__date__gte=start_date, start_time__date__lte=end_date).select_related('student', 'enrollment')
+        completed = sessions.filter(status='completed')
+        cancelled = sessions.filter(status='cancelled')
+
+        revenue = Decimal('0')
+        expected = Decimal('0')
+        lost = Decimal('0')
+        no_shows = 0
+        total = sessions.count()
+
+        for session in sessions:
+            payment = PaymentService.calculate_session_payment(session)
+            expected += session.earnings
+            if payment['is_paid']:
+                revenue += payment['amount']
+            else:
+                lost += session.earnings if session.status == 'cancelled' else Decimal('0')
+            if session.status == 'completed':
+                no_shows += 1 if session.attendance and session.attendance.attendance_status == 'absence' else 0
+
+        attendance_rate = 0
+        if completed.count():
+            attendance_rate = round((completed.filter(attendance__attendance_status='present').count() / completed.count()) * 100, 1)
+
+        return {
+            'actual_revenue': revenue,
+            'expected_revenue': expected,
+            'lost_revenue': lost,
+            'no_show_rate': round((no_shows / total) * 100, 1) if total else 0,
+            'attendance_rate': attendance_rate,
+            'total_sessions': total,
+            'cancelled_sessions': cancelled.count(),
+        }
+
+    @staticmethod
+    def get_smart_insights(start_date, end_date):
+        from .models import Session
+
+        sessions = Session.objects.filter(start_time__date__gte=start_date, start_time__date__lte=end_date).select_related('student')
+        no_show_students = []
+        for student in {s.student for s in sessions}:
+            student_sessions = sessions.filter(student=student)
+            absences = student_sessions.filter(attendance__attendance_status='absence').count()
+            if absences >= 3:
+                no_show_students.append({'student': student.name, 'absences': absences})
+
+        profitable_days = {}
+        for session in sessions.filter(status='completed'):
+            day = session.start_time.strftime('%A')
+            profitable_days.setdefault(day, Decimal('0'))
+            profitable_days[day] += session.earnings
+
+        return {
+            'frequent_no_shows': no_show_students,
+            'profitable_days': sorted(profitable_days.items(), key=lambda item: item[1], reverse=True),
+        }
+
+
+class SessionGenerationService:
+    @staticmethod
+    def generate_for_enrollment(enrollment, weeks=4):
+        if not enrollment or not enrollment.recurring_schedule:
+            return 0, []
+        return generate_sessions_from_schedule(enrollment.recurring_schedule, weeks=weeks)

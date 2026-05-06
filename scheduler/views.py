@@ -30,7 +30,7 @@ from .services import (
     to_cairo, to_student_tz, make_aware_cairo, ensure_aware, CAIRO_TZ,
     generate_sessions_from_schedule, preview_sessions_from_schedule,
     delete_future_recurring_sessions, regenerate_schedule,
-    fetch_prayer_times_for_date,
+    fetch_prayer_times_for_date, AnalyticsService,
 )
 
 COUNTRY_FLAGS = {
@@ -63,16 +63,16 @@ def _session_tz_payload(session):
 def dashboard(request):
     today = timezone.localdate()
     now = timezone.now()
-    today_sessions = Session.objects.filter(start_time__date=today).select_related('student').order_by('start_time')
-    upcoming = Session.objects.filter(start_time__gte=now, status='scheduled').select_related('student').order_by('start_time')[:5]
-    today_earnings = sum(s.earnings for s in today_sessions.filter(status='completed'))
+    today_sessions = Session.objects.filter(start_time__date=today).select_related('student', 'enrollment').order_by('start_time')
+    upcoming = Session.objects.filter(start_time__gte=now, status='scheduled').select_related('student', 'enrollment').order_by('start_time')[:5]
     week_start = today - timedelta(days=today.weekday())
     week_end = week_start + timedelta(days=6)
-    week_earnings = sum(s.earnings for s in Session.objects.filter(start_time__date__gte=week_start, start_time__date__lte=week_end, status='completed').select_related('student'))
     total_students = Student.objects.filter(is_active=True).count()
     scheduled_today = list(today_sessions.filter(status='scheduled'))
     conflicts = [(s1, s2) for i, s1 in enumerate(scheduled_today) for s2 in scheduled_today[i + 1:] if s1.start_time < s2.end_time and s2.start_time < s1.end_time]
-    return render(request, 'scheduler/dashboard.html', {'today': today, 'today_sessions': today_sessions, 'upcoming': upcoming, 'today_earnings': today_earnings, 'week_earnings': week_earnings, 'total_students': total_students, 'total_sessions_today': today_sessions.count(), 'conflicts': conflicts})
+    metrics = AnalyticsService.get_dashboard_metrics(week_start, week_end)
+    insights = AnalyticsService.get_smart_insights(week_start, week_end)
+    return render(request, 'scheduler/dashboard.html', {'today': today, 'today_sessions': today_sessions, 'upcoming': upcoming, 'today_earnings': sum(s.earnings for s in today_sessions.filter(status='completed')), 'week_earnings': metrics['actual_revenue'], 'total_students': total_students, 'total_sessions_today': today_sessions.count(), 'conflicts': conflicts, 'metrics': metrics, 'insights': insights})
 
 
 def student_list(request):
@@ -86,9 +86,23 @@ def student_create(request):
         sub_form = SubscriptionForm(request.POST)
         if form.is_valid() and sub_form.is_valid():
             student = form.save()
-            sub = sub_form.save(commit=False)
-            sub.student = student
-            sub.save()
+            enrollment = sub_form.save(commit=False)
+            enrollment.student = student
+            schedule = sub_form.cleaned_data.get('recurring_schedule')
+            if not schedule and sub_form.cleaned_data.get('day_of_week') is not None and sub_form.cleaned_data.get('start_time'):
+                schedule = RecurringSchedule.objects.create(
+                    student=student,
+                    day_of_week=sub_form.cleaned_data['day_of_week'],
+                    start_time=sub_form.cleaned_data['start_time'],
+                    duration=sub_form.cleaned_data.get('schedule_duration') or sub_form.cleaned_data['session_duration'],
+                    is_active=True,
+                )
+            if schedule:
+                enrollment.recurring_schedule = schedule
+            enrollment.save()
+            if schedule:
+                schedule.subscription = enrollment
+                schedule.save(update_fields=['subscription'])
             messages.success(request, _('Student %(name)s created successfully.') % {'name': student.name})
             return redirect('scheduler:student_detail', pk=student.pk)
     else:
@@ -140,13 +154,27 @@ def subscription_edit(request, student_pk):
         if form.is_valid():
             new_sub = form.save(commit=False)
             new_sub.student = student
+            schedule = form.cleaned_data.get('recurring_schedule')
+            if not schedule and form.cleaned_data.get('day_of_week') is not None and form.cleaned_data.get('start_time'):
+                schedule = RecurringSchedule.objects.create(
+                    student=student,
+                    day_of_week=form.cleaned_data['day_of_week'],
+                    start_time=form.cleaned_data['start_time'],
+                    duration=form.cleaned_data.get('schedule_duration') or form.cleaned_data['session_duration'],
+                    is_active=True,
+                )
+            if schedule:
+                new_sub.recurring_schedule = schedule
             if sub and sub.pk:
                 sub.is_active = False
                 sub.save()
                 new_sub.pk = None
             new_sub.is_active = True
             new_sub.save()
-            messages.success(request, _('Subscription updated.'))
+            if schedule:
+                schedule.subscription = new_sub
+                schedule.save(update_fields=['subscription'])
+            messages.success(request, _('Enrollment updated.'))
             return redirect('scheduler:student_detail', pk=student.pk)
     else:
         form = SubscriptionForm(instance=sub)
@@ -332,7 +360,14 @@ def session_create(request):
                 for e in errors:
                     messages.error(request, e)
             else:
-                Session.objects.create(student=student, start_time=start_dt, end_time=end_dt, is_recurring=form.cleaned_data.get('is_recurring', False), notes=form.cleaned_data.get('notes', ''))
+                Session.objects.create(
+                    student=student,
+                    enrollment=student.active_subscription,
+                    start_time=start_dt,
+                    end_time=end_dt,
+                    is_recurring=form.cleaned_data.get('is_recurring', False),
+                    notes=form.cleaned_data.get('notes', ''),
+                )
                 messages.success(request, _('Session created for %(name)s.') % {'name': student.name})
                 return redirect('scheduler:calendar')
     else:
@@ -437,8 +472,10 @@ def session_makeup(request, pk):
             else:
                 Session.objects.create(
                     student=session.student,
+                    enrollment=session.enrollment or session.student.active_subscription,
                     start_time=start_dt,
                     end_time=end_dt,
+                    session_type='makeup',
                     is_makeup=True,
                     notes=form.cleaned_data.get('notes', ''),
                 )
@@ -649,6 +686,10 @@ def analytics(request):
     today = timezone.localdate()
     start_date = today.replace(day=1)
     end_date = today
+    metrics = AnalyticsService.get_dashboard_metrics(start_date, end_date)
+    insights = AnalyticsService.get_smart_insights(start_date, end_date)
     return render(request, 'scheduler/analytics.html', {
         'occupancy': get_occupancy_rate(start_date, end_date),
+        'metrics': metrics,
+        'insights': insights,
     })

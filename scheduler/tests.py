@@ -5,7 +5,7 @@ import pytz
 from django.test import TestCase
 from django.utils import timezone
 
-from .models import Student, Subscription, Session, WorkingHours, ExceptionDay, PrayerTime, DEFAULT_HOURLY_RATE
+from .models import Student, Subscription, Session, WorkingHours, ExceptionDay, PrayerTime, DEFAULT_HOURLY_RATE, GlobalConfig
 from .services import (
     sessions_overlap, check_overlap,
     get_working_hours, is_within_working_hours,
@@ -44,10 +44,10 @@ class FormAndPricingTests(TestCase):
     def test_default_hourly_rate_defined(self):
         self.assertGreater(DEFAULT_HOURLY_RATE, Decimal('0'))
 
-    def test_subscription_snapshot_rate(self):
+    def test_enrollment_snapshot_rate(self):
         student = Student.objects.create(name='S', country='Egypt', timezone='Africa/Cairo')
-        sub = Subscription.objects.create(student=student, hourly_rate=Decimal('200'))
-        self.assertEqual(sub.hourly_rate, Decimal('200'))
+        sub = Subscription.objects.create(student=student, session_price=Decimal('200'), session_duration=60)
+        self.assertEqual(sub.session_price, Decimal('200'))
 
 
 class TimezoneHelperTests(TestCase):
@@ -122,7 +122,7 @@ class SessionValidationTests(TestCase):
     def setUp(self):
         WorkingHours.objects.create(weekday=5, start_time=time(10, 0), end_time=time(20, 0), is_working=True)
         self.student = Student.objects.create(name='Valid Student', country='Egypt', timezone='Africa/Cairo')
-        Subscription.objects.create(student=self.student, sessions_per_week=3, session_duration=60, hourly_rate=Decimal('200'))
+        Subscription.objects.create(student=self.student, session_price=Decimal('200'), session_duration=60, cancellation_window_hours=2)
 
     def test_valid_session_returns_no_errors(self):
         self.assertEqual(validate_session(cairo_dt(TEST_DATE, 15), cairo_dt(TEST_DATE, 16)), [])
@@ -153,15 +153,15 @@ class MakeupSessionTests(TestCase):
 class FinancialCalculationTests(TestCase):
     def setUp(self):
         self.student = Student.objects.create(name='Finance Student', country='Egypt', timezone='Africa/Cairo')
-        self.subscription = Subscription.objects.create(student=self.student, sessions_per_week=3, session_duration=60, hourly_rate=Decimal('200'), is_active=True)
+        self.subscription = Subscription.objects.create(student=self.student, session_price=Decimal('200'), session_duration=60, cancellation_window_hours=2, is_active=True)
 
     def test_session_rate_60min(self):
         self.assertEqual(self.subscription.session_rate, Decimal('200'))
 
     def test_earnings_use_snapshot_rate(self):
-        self.subscription.hourly_rate = Decimal('500')
+        self.subscription.session_price = Decimal('500')
         self.subscription.save()
-        session = Session.objects.create(student=self.student, start_time=cairo_dt(TEST_DATE, 15), end_time=cairo_dt(TEST_DATE, 16), status='completed')
+        session = Session.objects.create(student=self.student, enrollment=self.subscription, start_time=cairo_dt(TEST_DATE, 15), end_time=cairo_dt(TEST_DATE, 16), status='completed')
         self.assertEqual(session.earnings, Decimal('500'))
 
     def test_occupancy_rate_no_sessions(self):

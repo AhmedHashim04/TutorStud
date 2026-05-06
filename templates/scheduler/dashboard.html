@@ -3,6 +3,71 @@
 {% block title %}Dashboard{% endblock %}
 {% block page_title %}Dashboard{% endblock %}
 
+{% block extra_css %}
+<style>
+.metric-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
+    gap: 16px;
+    margin-bottom: 24px;
+}
+
+.metric-card {
+    background: linear-gradient(135deg, #ffffff 0%, #f8fafc 100%);
+    border: 1px solid #e2e8f0;
+    border-radius: 16px;
+    padding: 20px;
+    transition: all 0.3s ease;
+    position: relative;
+    overflow: hidden;
+}
+
+.metric-card::before {
+    content: '';
+    position: absolute;
+    top: 0;
+    right: 0;
+    width: 100px;
+    height: 100px;
+    background: radial-gradient(circle, rgba(99, 102, 241, 0.1) 0%, transparent 70%);
+    border-radius: 50%;
+}
+
+.metric-card:hover {
+    border-color: #cbd5e1;
+    box-shadow: 0 8px 24px rgba(0, 0, 0, 0.08);
+    transform: translateY(-2px);
+}
+
+.metric-card.accent-blue::before { background: radial-gradient(circle, rgba(59, 130, 246, 0.15) 0%, transparent 70%); }
+.metric-card.accent-green::before { background: radial-gradient(circle, rgba(16, 185, 129, 0.15) 0%, transparent 70%); }
+.metric-card.accent-red::before { background: radial-gradient(circle, rgba(239, 68, 68, 0.15) 0%, transparent 70%); }
+.metric-card.accent-amber::before { background: radial-gradient(circle, rgba(245, 158, 11, 0.15) 0%, transparent 70%); }
+
+.metric-header { display: flex; align-items: center; justify-content: space-between; margin-bottom: 12px; }
+.metric-icon { width: 44px; height: 44px; border-radius: 12px; display: flex; align-items: center; justify-content: center; font-size: 20px; flex-shrink: 0; position: relative; z-index: 1; }
+.metric-card.accent-blue .metric-icon { background: #dbeafe; color: #1e40af; }
+.metric-card.accent-green .metric-icon { background: #dcfce7; color: #15803d; }
+.metric-card.accent-red .metric-icon { background: #fee2e2; color: #991b1b; }
+.metric-card.accent-amber .metric-icon { background: #fef3c7; color: #92400e; }
+
+.metric-label { font-size: 12px; font-weight: 600; text-transform: uppercase; letter-spacing: 0.5px; color: #64748b; }
+.metric-value { font-size: 32px; font-weight: 700; color: #1e293b; margin: 8px 0; position: relative; z-index: 1; }
+.metric-change { font-size: 12px; color: #64748b; position: relative; z-index: 1; }
+.metric-change.positive { color: #10b981; }
+.metric-change.negative { color: #ef4444; }
+
+.insights-section { margin-top: 32px; }
+.insights-title { font-size: 18px; font-weight: 700; color: #1e293b; margin-bottom: 16px; display: flex; align-items: center; gap: 8px; }
+.insights-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(300px, 1fr)); gap: 16px; }
+.insight-card { background: linear-gradient(135deg, #fef3c7 0%, #fef9e7 100%); border: 1px solid #fcd34d; border-radius: 12px; padding: 16px; }
+.insight-card.alert-no-shows { background: linear-gradient(135deg, #fee2e2 0%, #fef2f2 100%); border-color: #fecaca; }
+.insight-item { font-size: 14px; margin-bottom: 8px; display: flex; align-items: center; gap: 8px; }
+.insight-item:last-child { margin-bottom: 0; }
+.insight-value { font-weight: 700; color: #1e293b; }
+</style>
+{% endblock %}
+
 {% block content %}
 <div class="page-header">
     <div>
@@ -16,43 +81,72 @@
         <i class="fas fa-magic me-2"></i>{% trans "Smart Schedule" %}</a>
 </div>
 
-<!-- Stat cards -->
-<div class="row g-3 mb-4">
-    <div class="col-6 col-md-3">
-        <div class="stat-card">
-            <div class="stat-icon blue"><i class="fas fa-calendar-day"></i></div>
+<!-- Key Metrics -->
+<div class="metric-grid">
+    <div class="metric-card accent-blue">
+        <div class="metric-header">
             <div>
-                <div class="stat-value">{{ total_sessions_today }}</div>
-                <div class="stat-label">{% trans "Sessions Today" %}</div>
+                <div class="metric-label">{% trans "Actual Revenue" %}</div>
+                <div class="metric-value">{{ metrics.actual_revenue|floatformat:0 }} <span style="font-size:18px">EGP</span></div>
             </div>
+            <div class="metric-icon"><i class="fas fa-coins"></i></div>
         </div>
+        <div class="metric-change positive"><i class="fas fa-check-circle me-1"></i>{% trans "This week based on attendance" %}</div>
     </div>
-    <div class="col-6 col-md-3">
-        <div class="stat-card">
-            <div class="stat-icon green"><i class="fas fa-pound-sign"></i></div>
+
+    <div class="metric-card accent-green">
+        <div class="metric-header">
             <div>
-                <div class="stat-value">{{ today_earnings|floatformat:0 }}</div>
-                <div class="stat-label">{% trans "Today's Earnings (EGP)" %}</div>
+                <div class="metric-label">{% trans "Expected Revenue" %}</div>
+                <div class="metric-value">{{ metrics.expected_revenue|floatformat:0 }} <span style="font-size:18px">EGP</span></div>
             </div>
+            <div class="metric-icon"><i class="fas fa-chart-line"></i></div>
         </div>
+        <div class="metric-change">{% trans "Of scheduled sessions" %}</div>
     </div>
-    <div class="col-6 col-md-3">
-        <div class="stat-card">
-            <div class="stat-icon purple"><i class="fas fa-wallet"></i></div>
+
+    <div class="metric-card accent-red">
+        <div class="metric-header">
             <div>
-                <div class="stat-value">{{ week_earnings|floatformat:0 }}</div>
-                <div class="stat-label">{% trans "This Week (EGP)" %}</div>
+                <div class="metric-label">{% trans "Lost Revenue" %}</div>
+                <div class="metric-value">{{ metrics.lost_revenue|floatformat:0 }} <span style="font-size:18px">EGP</span></div>
             </div>
+            <div class="metric-icon"><i class="fas fa-warning"></i></div>
         </div>
+        <div class="metric-change negative">{% trans "From cancellations" %}</div>
     </div>
-    <div class="col-6 col-md-3">
-        <div class="stat-card">
-            <div class="stat-icon indigo"><i class="fas fa-user-graduate"></i></div>
+
+    <div class="metric-card accent-amber">
+        <div class="metric-header">
             <div>
-                <div class="stat-value">{{ total_students }}</div>
-                <div class="stat-label">{% trans "Active Students" %}</div>
+                <div class="metric-label">{% trans "No-Show Rate" %}</div>
+                <div class="metric-value">{{ metrics.no_show_rate|floatformat:1 }} <span style="font-size:18px">%</span></div>
             </div>
+            <div class="metric-icon"><i class="fas fa-ban"></i></div>
         </div>
+        <div class="metric-change">{% trans "Student absences" %}</div>
+    </div>
+
+    <div class="metric-card accent-blue">
+        <div class="metric-header">
+            <div>
+                <div class="metric-label">{% trans "Attendance Rate" %}</div>
+                <div class="metric-value">{{ metrics.attendance_rate|floatformat:1 }} <span style="font-size:18px">%</span></div>
+            </div>
+            <div class="metric-icon"><i class="fas fa-check"></i></div>
+        </div>
+        <div class="metric-change positive">{% trans "Completed sessions" %}</div>
+    </div>
+
+    <div class="metric-card accent-green">
+        <div class="metric-header">
+            <div>
+                <div class="metric-label">{% trans "Total Sessions" %}</div>
+                <div class="metric-value">{{ metrics.total_sessions }}</div>
+            </div>
+            <div class="metric-icon"><i class="fas fa-calendar-check"></i></div>
+        </div>
+        <div class="metric-change">{{ metrics.cancelled_sessions }} {% trans "cancelled" %}</div>
     </div>
 </div>
 

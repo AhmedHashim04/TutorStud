@@ -2,7 +2,7 @@ from django import forms
 from django.utils import timezone
 from django.utils.translation import gettext_lazy as _
 
-from .models import Student, Subscription, Session, RecurringSchedule, WorkingHours, ExceptionDay, PrayerTime, DEFAULT_HOURLY_RATE
+from .models import Student, Subscription, Session, RecurringSchedule, WorkingHours, ExceptionDay, PrayerTime, GlobalConfig, WEEKDAYS
 
 PRAYER_TIME_FIELDS = ['fajr', 'dhuhr', 'asr', 'maghrib', 'isha']
 
@@ -124,24 +124,79 @@ class StudentForm(forms.ModelForm):
         return obj
 
 class SubscriptionForm(forms.ModelForm):
+    recurring_schedule = forms.ModelChoiceField(
+        queryset=RecurringSchedule.objects.select_related('student').all(),
+        required=False,
+        empty_label=_('Create a new schedule below'),
+        widget=forms.Select(attrs={'class': 'form-select form-control'}),
+    )
+    day_of_week = forms.ChoiceField(
+        choices=WEEKDAYS,
+        required=False,
+        widget=forms.Select(attrs={'class': 'form-select form-control'}),
+        label=_('Day of week'),
+    )
+    start_time = forms.TimeField(
+        required=False,
+        widget=forms.TimeInput(attrs={'type': 'time', 'class': 'form-control'}),
+        label=_('Start time'),
+    )
+    schedule_duration = forms.IntegerField(
+        required=False,
+        min_value=15,
+        widget=forms.NumberInput(attrs={'min': 15, 'class': 'form-control'}),
+        label=_('Schedule duration (minutes)'),
+    )
+
     class Meta:
         model = Subscription
-        fields = ['sessions_per_week', 'session_duration', 'hourly_rate', 'start_date', 'is_active']
+        fields = [
+            'recurring_schedule',
+            'session_price',
+            'session_duration',
+            'cancellation_window_hours',
+            'allow_makeup_sessions',
+            'allow_extra_sessions',
+            'start_date',
+            'end_date',
+            'is_active',
+        ]
         widgets = {
             'start_date': forms.DateInput(attrs={'type': 'date'}),
-            'sessions_per_week': forms.NumberInput(attrs={'min': 1, 'placeholder': _('e.g. 3')}),
-            'hourly_rate': forms.NumberInput(attrs={'step': '0.01', 'min': '0', 'placeholder': _('0.00')}),
+            'end_date': forms.DateInput(attrs={'type': 'date'}),
+            'session_price': forms.NumberInput(attrs={'step': '0.01', 'min': '0', 'placeholder': _('0.00')}),
             'session_duration': forms.Select(attrs={
                 'class': 'form-select form-control',
                 'style': 'appearance: none; padding-right: 40px;'
             }),
+            'cancellation_window_hours': forms.NumberInput(attrs={'min': 0}),
         }
-        labels = {'is_active': _('Active subscription')}
+        labels = {
+            'is_active': _('Active enrollment'),
+            'session_price': _('Price per session'),
+            'session_duration': _('Session duration'),
+            'cancellation_window_hours': _('Cancellation window (hours)'),
+        }
 
     def __init__(self, *args, **kwargs):
         super().__init__(*args, **kwargs)
-        self.fields['hourly_rate'].initial = DEFAULT_HOURLY_RATE
-        self.fields['hourly_rate'].help_text = _('Stored as a snapshot on the subscription. Changing this creates a new subscription record.')
+        defaults = GlobalConfig.objects.first()
+        if defaults:
+            self.fields['session_price'].initial = defaults.default_session_price
+            self.fields['session_duration'].initial = defaults.default_session_duration
+            self.fields['cancellation_window_hours'].initial = defaults.cancellation_window_hours
+            self.fields['allow_makeup_sessions'].initial = defaults.allow_makeup_sessions
+            self.fields['allow_extra_sessions'].initial = defaults.allow_extra_sessions
+            self.fields['schedule_duration'].initial = defaults.default_session_duration
+        else:
+            self.fields['session_price'].initial = 200
+            self.fields['session_duration'].initial = 60
+            self.fields['cancellation_window_hours'].initial = 2
+            self.fields['allow_makeup_sessions'].initial = True
+            self.fields['allow_extra_sessions'].initial = True
+            self.fields['schedule_duration'].initial = 60
+        self.fields['session_price'].help_text = _('Stored as a snapshot on the enrollment. Changing this creates a new enrollment record.')
+        self.fields['recurring_schedule'].queryset = RecurringSchedule.objects.select_related('student').order_by('student__name', 'day_of_week', 'start_time')
         self.fields['start_date'].initial = timezone.localdate
 
 class RecurringScheduleForm(forms.ModelForm):
@@ -167,20 +222,30 @@ class SessionForm(forms.ModelForm):
 
     class Meta:
         model = Session
-        fields = ['student', 'start_time', 'end_time', 'status', 'is_makeup', 'original_session', 'is_recurring', 'notes']
+        fields = ['student', 'enrollment', 'recurring_schedule', 'start_time', 'end_time', 'status', 'session_type', 'is_makeup', 'is_recurring', 'cancelled_by', 'cancellation_reason', 'original_session', 'is_override', 'notes']
         widgets = {
             'student': forms.Select(attrs={'class': 'form-select form-control'}),
+            'enrollment': forms.Select(attrs={'class': 'form-select form-control'}),
+            'recurring_schedule': forms.Select(attrs={'class': 'form-select form-control'}),
             'status': forms.Select(attrs={'class': 'form-select form-control'}),
+            'session_type': forms.Select(attrs={'class': 'form-select form-control'}),
+            'cancelled_by': forms.Select(attrs={'class': 'form-select form-control'}),
             'original_session': forms.Select(attrs={'class': 'form-select form-control'}),
+            'is_override': forms.CheckboxInput(),
             'notes': forms.Textarea(attrs={'rows': 2})
         }
 
     def __init__(self, *args, **kwargs):
         from .services import to_cairo
         super().__init__(*args, **kwargs)
-        self.fields['original_session'].queryset = Session.objects.filter(status='missed').select_related('student')
+        self.fields['original_session'].queryset = Session.objects.filter(status__in=['scheduled', 'completed', 'cancelled', 'rescheduled']).select_related('student')
         self.fields['original_session'].required = False
         self.fields['student'].queryset = Student.objects.filter(is_active=True)
+        self.fields['enrollment'].queryset = Subscription.objects.filter(is_active=True).select_related('student')
+        self.fields['recurring_schedule'].queryset = RecurringSchedule.objects.select_related('student').all()
+        self.fields['session_type'].required = False
+        self.fields['cancelled_by'].required = False
+        self.fields['cancelled_by'].choices = [('', _('---------'))] + list(self.fields['cancelled_by'].choices)
         if self.instance and self.instance.pk:
             if self.instance.start_time:
                 self.initial['start_time'] = to_cairo(self.instance.start_time).strftime('%Y-%m-%dT%H:%M')
