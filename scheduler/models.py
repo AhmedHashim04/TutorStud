@@ -154,12 +154,16 @@ class RecurringSchedule(models.Model):
     student = models.ForeignKey(Student, on_delete=models.CASCADE, related_name='schedules')
     weekday = models.IntegerField(choices=WEEKDAYS)
     start_time = models.TimeField()
+    is_active = models.BooleanField(default=True, help_text=_("Disable to temporarily pause this schedule"))
+    created_at = models.DateTimeField(auto_now_add=True)
+    updated_at = models.DateTimeField(auto_now=True)
 
     class Meta:
         ordering = ['weekday', 'start_time']
 
     def __str__(self):
-        return f"{self.student.name} - {self.get_weekday_display()} at {self.start_time}"
+        status = "•" if self.is_active else "∘"
+        return f"{status} {self.student.name} - {self.get_weekday_display()} at {self.start_time}"
 
 
 class Session(models.Model):
@@ -233,3 +237,54 @@ class PrayerTime(models.Model):
 
     def __str__(self):
         return f"{self.get_prayer_display()} on {self.date} at {self.adhan_time}"
+
+
+class ScheduleException(models.Model):
+    """
+    Exceptions to recurring schedules for flexible adjustments:
+    - SKIP: Don't generate sessions for a specific week
+    - MOVE: Move a session from one date to another
+    - ADD: Add extra sessions in a specific week
+    """
+    EXCEPTION_TYPES = [
+        ('skip', _('Skip Week')),
+        ('move', _('Move Session')),
+        ('add', _('Add Sessions')),
+    ]
+
+    schedule = models.ForeignKey(RecurringSchedule, on_delete=models.CASCADE, related_name='exceptions')
+    exception_type = models.CharField(max_length=20, choices=EXCEPTION_TYPES)
+    
+    # For SKIP and MOVE: the week start date (Monday) of the affected week
+    week_start_date = models.DateField(help_text=_("Start date (Monday) of the week affected"))
+    
+    # For MOVE: target date to move the session to (must be a future date)
+    move_to_date = models.DateField(null=True, blank=True, help_text=_("Target date for moving the session"))
+    move_to_time = models.TimeField(null=True, blank=True, help_text=_("Target time for the moved session"))
+    
+    # For ADD: number of extra sessions to add in this week
+    add_count = models.IntegerField(default=1, help_text=_("Number of extra sessions to add"))
+    add_date = models.DateField(null=True, blank=True, help_text=_("Date to add extra sessions"))
+    add_time = models.TimeField(null=True, blank=True, help_text=_("Time to add extra sessions"))
+    
+    # Metadata
+    reason = models.CharField(max_length=255, blank=True, help_text=_("Why this exception exists"))
+    created_at = models.DateTimeField(auto_now_add=True)
+    created_by = models.CharField(max_length=100, blank=True, help_text=_("Who created this exception"))
+
+    class Meta:
+        ordering = ['week_start_date']
+        verbose_name_plural = "Schedule Exceptions"
+
+    def __str__(self):
+        return f"{self.schedule.student.name} - {self.get_exception_type_display()} ({self.week_start_date})"
+
+    def get_detailed_description(self):
+        """Return a human-readable description of this exception."""
+        if self.exception_type == 'skip':
+            return f"Skip {self.schedule.get_weekday_display()} session the week of {self.week_start_date}"
+        elif self.exception_type == 'move':
+            return f"Move {self.schedule.get_weekday_display()} session to {self.move_to_date} at {self.move_to_time}"
+        elif self.exception_type == 'add':
+            return f"Add {self.add_count} extra session(s) on {self.add_date} at {self.add_time}"
+        return str(self)

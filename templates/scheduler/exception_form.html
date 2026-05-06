@@ -1,0 +1,261 @@
+{% extends "base.html" %}
+{% load i18n %}
+
+{% block title %}
+    {% if exception %}
+        {% trans "Edit Exception" %}
+    {% else %}
+        {% trans "Create Exception" %}
+    {% endif %}
+{% endblock %}
+
+{% block page_title %}
+    {% if exception %}
+        <i class="fas fa-edit me-2"></i>{% trans "Edit Exception" %}
+    {% else %}
+        <i class="fas fa-star-plus me-2"></i>{% trans "Create Exception" %}
+    {% endif %}
+{% endblock %}
+
+{% block content %}
+<div class="content">
+    <div class="container-fluid">
+        <!-- Back Button -->
+        <div class="mb-3">
+            <a href="{% url 'scheduler:manage_exceptions' schedule.student.pk %}" class="btn btn-outline-secondary btn-sm">
+                <i class="fas fa-arrow-left me-1"></i>{% trans "Back to Exceptions" %}
+            </a>
+        </div>
+
+        <!-- Main Form Card -->
+        <div class="card border-0 shadow-sm">
+            <div class="card-header bg-light border-bottom">
+                <h5 class="mb-0">
+                    <i class="fas fa-user-circle me-2"></i>{{ student.name }}
+                    <span class="text-muted fs-6 ms-2">{{ schedule.get_weekday_display }} @ {{ schedule.start_time|time:"H:i" }}</span>
+                </h5>
+            </div>
+
+            <div class="card-body p-4">
+                <form method="POST" class="needs-validation" novalidate>
+                    {% csrf_token %}
+
+                    <!-- Exception Type Selection -->
+                    <div class="mb-4">
+                        <h6 class="fw-semibold mb-3">
+                            <i class="fas fa-list me-2 text-primary"></i>{% trans "Exception Type" %}
+                        </h6>
+                        <div class="row">
+                            <div class="col-md-4">
+                                <div class="form-check">
+                                    <input class="form-check-input exception-type-radio" type="radio" name="exception_type" 
+                                           id="exception_type_skip" value="skip" 
+                                           {% if form.exception_type.value == 'skip' %}checked{% elif not exception %}checked{% endif %}
+                                           onchange="toggleExceptionFields()">
+                                    <label class="form-check-label" for="exception_type_skip">
+                                        <strong>{% trans "Skip Week" %}</strong><br>
+                                        <small class="text-muted">{% trans "No session generated" %}</small>
+                                    </label>
+                                </div>
+                            </div>
+                            <div class="col-md-4">
+                                <div class="form-check">
+                                    <input class="form-check-input exception-type-radio" type="radio" name="exception_type" 
+                                           id="exception_type_move" value="move"
+                                           {% if form.exception_type.value == 'move' %}checked{% endif %}
+                                           onchange="toggleExceptionFields()">
+                                    <label class="form-check-label" for="exception_type_move">
+                                        <strong>{% trans "Move Session" %}</strong><br>
+                                        <small class="text-muted">{% trans "To different date/time" %}</small>
+                                    </label>
+                                </div>
+                            </div>
+                            <div class="col-md-4">
+                                <div class="form-check">
+                                    <input class="form-check-input exception-type-radio" type="radio" name="exception_type" 
+                                           id="exception_type_add" value="add"
+                                           {% if form.exception_type.value == 'add' %}checked{% endif %}
+                                           onchange="toggleExceptionFields()">
+                                    <label class="form-check-label" for="exception_type_add">
+                                        <strong>{% trans "Add Sessions" %}</strong><br>
+                                        <small class="text-muted">{% trans "Extra makeup sessions" %}</small>
+                                    </label>
+                                </div>
+                            </div>
+                        </div>
+                        {% if form.exception_type.errors %}
+                        <div class="invalid-feedback d-block">
+                            {{ form.exception_type.errors.0 }}
+                        </div>
+                        {% endif %}
+                    </div>
+
+                    <hr class="my-4">
+
+                    <!-- Affected Week -->
+                    <div class="mb-4">
+                        <label for="{{ form.week_start_date.id_for_label }}" class="form-label fw-semibold">
+                            <i class="fas fa-calendar me-2 text-primary"></i>{% trans "Week Start Date (Monday)" %}
+                        </label>
+                        {{ form.week_start_date }}
+                        {% if form.week_start_date.errors %}
+                        <div class="invalid-feedback d-block">
+                            {{ form.week_start_date.errors.0 }}
+                        </div>
+                        {% endif %}
+                        <small class="form-text text-muted d-block mt-2">
+                            {% trans "Which week is affected by this exception? Select the Monday of that week." %}
+                        </small>
+                    </div>
+
+                    <!-- MOVE Type Fields -->
+                    <div id="move-fields" class="mb-4" style="display: {% if form.exception_type.value == 'move' %}block{% else %}none{% endif %};">
+                        <div class="card border-warning bg-light">
+                            <div class="card-body">
+                                <h6 class="card-title mb-3"><i class="fas fa-exchange-alt me-2 text-warning"></i>{% trans "Move To" %}</h6>
+                                
+                                <div class="row mb-3">
+                                    <div class="col-md-6">
+                                        <label for="{{ form.move_to_date.id_for_label }}" class="form-label">
+                                            {% trans "New Date" %}
+                                        </label>
+                                        {{ form.move_to_date }}
+                                        {% if form.move_to_date.errors %}
+                                        <div class="invalid-feedback d-block">
+                                            {{ form.move_to_date.errors.0 }}
+                                        </div>
+                                        {% endif %}
+                                    </div>
+                                    <div class="col-md-6">
+                                        <label for="{{ form.move_to_time.id_for_label }}" class="form-label">
+                                            {% trans "New Time" %}
+                                        </label>
+                                        {{ form.move_to_time }}
+                                        {% if form.move_to_time.errors %}
+                                        <div class="invalid-feedback d-block">
+                                            {{ form.move_to_time.errors.0 }}
+                                        </div>
+                                        {% endif %}
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- ADD Type Fields -->
+                    <div id="add-fields" class="mb-4" style="display: {% if form.exception_type.value == 'add' %}block{% else %}none{% endif %};">
+                        <div class="card border-info bg-light">
+                            <div class="card-body">
+                                <h6 class="card-title mb-3"><i class="fas fa-plus-circle me-2 text-info"></i>{% trans "Add Extra Sessions" %}</h6>
+                                
+                                <div class="row mb-3">
+                                    <div class="col-md-4">
+                                        <label for="{{ form.add_count.id_for_label }}" class="form-label">
+                                            {% trans "Number of Sessions" %}
+                                        </label>
+                                        {{ form.add_count }}
+                                        {% if form.add_count.errors %}
+                                        <div class="invalid-feedback d-block">
+                                            {{ form.add_count.errors.0 }}
+                                        </div>
+                                        {% endif %}
+                                    </div>
+                                    <div class="col-md-4">
+                                        <label for="{{ form.add_date.id_for_label }}" class="form-label">
+                                            {% trans "Date" %}
+                                        </label>
+                                        {{ form.add_date }}
+                                        {% if form.add_date.errors %}
+                                        <div class="invalid-feedback d-block">
+                                            {{ form.add_date.errors.0 }}
+                                        </div>
+                                        {% endif %}
+                                    </div>
+                                    <div class="col-md-4">
+                                        <label for="{{ form.add_time.id_for_label }}" class="form-label">
+                                            {% trans "Start Time" %}
+                                        </label>
+                                        {{ form.add_time }}
+                                        {% if form.add_time.errors %}
+                                        <div class="invalid-feedback d-block">
+                                            {{ form.add_time.errors.0 }}
+                                        </div>
+                                        {% endif %}
+                                    </div>
+                                </div>
+                                <small class="text-muted">
+                                    {% trans "Multiple sessions will be spaced 1 hour apart." %}
+                                </small>
+                            </div>
+                        </div>
+                    </div>
+
+                    <hr class="my-4">
+
+                    <!-- Reason (Optional) -->
+                    <div class="mb-4">
+                        <label for="{{ form.reason.id_for_label }}" class="form-label">
+                            <i class="fas fa-comment-dots me-2 text-secondary"></i>{% trans "Reason (Optional)" %}
+                        </label>
+                        {{ form.reason }}
+                        {% if form.reason.errors %}
+                        <div class="invalid-feedback d-block">
+                            {{ form.reason.errors.0 }}
+                        </div>
+                        {% endif %}
+                        <small class="form-text text-muted d-block mt-2">
+                            {% trans "Document why this exception was created (e.g., 'Student requested makeup', 'Tutor unavailable')" %}
+                        </small>
+                    </div>
+
+                    <!-- Non-field Errors -->
+                    {% if form.non_field_errors %}
+                    <div class="alert alert-danger mb-4" role="alert">
+                        {% for error in form.non_field_errors %}
+                        <i class="fas fa-exclamation-circle me-2"></i>{{ error }}<br>
+                        {% endfor %}
+                    </div>
+                    {% endif %}
+
+                    <!-- Info Box -->
+                    <div class="alert alert-info border-0 mb-4" role="alert">
+                        <i class="fas fa-lightbulb me-2"></i>
+                        <strong>{% trans "What happens when you save:" %}</strong>
+                        <ul class="mb-0 mt-2 ms-3">
+                            <li>{% trans "Only future sessions are affected" %}</li>
+                            <li>{% trans "Past sessions remain unchanged" %}</li>
+                            <li>{% trans "Base schedule remains intact - exception is temporary" %}</li>
+                            <li>{% trans "Sessions will be regenerated to apply this exception" %}</li>
+                        </ul>
+                    </div>
+
+                    <!-- Form Actions -->
+                    <div class="d-flex gap-2 justify-content-end">
+                        <a href="{% url 'scheduler:manage_exceptions' student.pk %}" class="btn btn-secondary">
+                            {% trans "Cancel" %}
+                        </a>
+                        <button type="submit" class="btn btn-primary">
+                            <i class="fas fa-save me-1"></i>
+                            {% if exception %}
+                                {% trans "Update Exception" %}
+                            {% else %}
+                                {% trans "Create Exception" %}
+                            {% endif %}
+                        </button>
+                    </div>
+                </form>
+            </div>
+        </div>
+    </div>
+</div>
+
+<script>
+function toggleExceptionFields() {
+    const type = document.querySelector('input[name="exception_type"]:checked').value;
+    document.getElementById('move-fields').style.display = (type === 'move') ? 'block' : 'none';
+    document.getElementById('add-fields').style.display = (type === 'add') ? 'block' : 'none';
+}
+</script>
+
+{% include "scheduler/includes/modals.html" %}
+{% endblock %}

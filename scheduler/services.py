@@ -93,10 +93,60 @@ def get_next_weekday(from_date, target_weekday):
     return from_date + timedelta(days=days_ahead)
 
 
+def get_week_start_date(date):
+    """Return Monday of the week containing the given date."""
+    return date - timedelta(days=date.weekday())
+
+
+def check_exception_for_date(schedule, target_date):
+    """
+    Check if there's an exception for the given schedule on target_date.
+    Returns (should_skip, moved_to_datetime, extra_sessions_to_add)
+    """
+    from .models import ScheduleException
+    
+    week_start = get_week_start_date(target_date)
+    exceptions = ScheduleException.objects.filter(
+        schedule=schedule,
+        week_start_date=week_start
+    )
+    
+    should_skip = False
+    moved_to_dt = None
+    extra_sessions = []
+    
+    for exc in exceptions:
+        if exc.exception_type == 'skip':
+            should_skip = True
+        elif exc.exception_type == 'move':
+            # Move the session to move_to_date at move_to_time
+            if exc.move_to_date and exc.move_to_time:
+                moved_to_dt = CAIRO_TZ.localize(datetime.combine(exc.move_to_date, exc.move_to_time))
+        elif exc.exception_type == 'add':
+            # Schedule extra sessions
+            if exc.add_date and exc.add_time:
+                for i in range(exc.add_count):
+                    # Space them out if multiple (e.g., add_count=2, add 1 hour apart)
+                    offset_minutes = i * 60  # 1 hour between extra sessions
+                    add_dt = CAIRO_TZ.localize(datetime.combine(exc.add_date, exc.add_time))
+                    add_dt = add_dt + timedelta(minutes=offset_minutes)
+                    extra_sessions.append(add_dt)
+    
+    return should_skip, moved_to_dt, extra_sessions
+
+
 def generate_sessions_for_student(student, weeks=4):
     """
-    Generate future sessions for a student based on their recurring schedule.
-    Will only generate if the student is active.
+    Generate future sessions for a student based on their recurring schedule and exceptions.
+    
+    Behavior:
+    1. Check if schedule is active
+    2. For each week, check for exceptions (SKIP, MOVE, ADD)
+    3. Apply exceptions logic:
+       - SKIP: don't generate
+       - MOVE: generate at moved time instead
+       - ADD: generate extra sessions
+    4. Only generate future sessions (never modify past sessions)
     """
     if not student.is_active:
         return 0, []
@@ -105,39 +155,67 @@ def generate_sessions_for_student(student, weeks=4):
     errors_log = []
     today = timezone.localdate(timezone=CAIRO_TZ)
 
-    schedules = RecurringSchedule.objects.filter(student=student)
+    schedules = RecurringSchedule.objects.filter(student=student, is_active=True)
     
     for schedule in schedules:
         first_day = get_next_weekday(today, schedule.weekday)
         
         for week_offset in range(weeks):
             target_date = first_day + timedelta(weeks=week_offset)
-            start_dt = CAIRO_TZ.localize(datetime.combine(target_date, schedule.start_time))
+            base_start_dt = CAIRO_TZ.localize(datetime.combine(target_date, schedule.start_time))
             
-            # Skip if session already exists for this student at this exact time
+            # Check for exceptions
+            should_skip, moved_to_dt, extra_sessions = check_exception_for_date(schedule, target_date)
+            
+            # If skipped, don't generate this session
+            if should_skip:
+                continue
+            
+            # Determine the actual session datetime
+            actual_start_dt = moved_to_dt if moved_to_dt else base_start_dt
+            
+            # Skip if session already exists at this exact time
             already_exists = Session.objects.filter(
                 student=student,
-                start_time=start_dt
+                start_time=actual_start_dt
             ).exists()
             
-            if already_exists:
-                continue
-
-            # Validate slot
-            errors = validate_session(start_dt, student.session_duration)
-            if errors:
-                errors_log.append(f"{start_dt.strftime('%Y-%m-%d %H:%M')}: {', '.join(errors)}")
-                continue
-
-            # Create session
-            Session.objects.create(
-                student=student,
-                start_time=start_dt,
-                duration=student.session_duration,
-                price=student.session_price,
-                status='scheduled'
-            )
-            created_count += 1
+            if not already_exists:
+                # Validate slot
+                errors = validate_session(actual_start_dt, student.session_duration)
+                if errors:
+                    errors_log.append(f"{actual_start_dt.strftime('%Y-%m-%d %H:%M')}: {', '.join(errors)}")
+                else:
+                    # Create session
+                    Session.objects.create(
+                        student=student,
+                        start_time=actual_start_dt,
+                        duration=student.session_duration,
+                        price=student.session_price,
+                        status='scheduled'
+                    )
+                    created_count += 1
+            
+            # Add extra sessions if any
+            for extra_dt in extra_sessions:
+                already_exists_extra = Session.objects.filter(
+                    student=student,
+                    start_time=extra_dt
+                ).exists()
+                
+                if not already_exists_extra:
+                    errors = validate_session(extra_dt, student.session_duration)
+                    if errors:
+                        errors_log.append(f"{extra_dt.strftime('%Y-%m-%d %H:%M')} (extra): {', '.join(errors)}")
+                    else:
+                        Session.objects.create(
+                            student=student,
+                            start_time=extra_dt,
+                            duration=student.session_duration,
+                            price=student.session_price,
+                            status='scheduled'
+                        )
+                        created_count += 1
 
     return created_count, errors_log
 

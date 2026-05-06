@@ -20,6 +20,17 @@ urlpatterns = [
     path('students/<int:pk>/', views.student_detail, name='student_detail'),
     path('students/<int:pk>/update-notes/', views.update_student_notes, name='update_student_notes'),
     
+    # Schedule Management (NEW)
+    path('students/<int:student_id>/schedules/', views.student_schedules, name='student_schedules'),
+    path('schedules/<int:pk>/edit/', views.edit_schedule, name='edit_schedule'),
+    path('schedules/<int:pk>/delete/', views.delete_schedule, name='delete_schedule'),
+    
+    # Schedule Exceptions (NEW)
+    path('students/<int:student_id>/exceptions/', views.manage_exceptions, name='manage_exceptions'),
+    path('exceptions/<int:schedule_id>/create/', views.create_exception, name='create_exception'),
+    path('exceptions/<int:pk>/edit/', views.edit_exception, name='edit_exception'),
+    path('exceptions/<int:pk>/delete/', views.delete_exception, name='delete_exception'),
+    
     # Fast Actions
     path('add-student/', views.add_student, name='add_student'),
     path('add-session/', views.add_session, name='add_session'),

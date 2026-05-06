@@ -1,0 +1,131 @@
+{% extends "base.html" %}
+{% load i18n %}
+
+{% block title %}{% trans "Edit Schedule" %}{% endblock %}
+{% block page_title %}<i class="fas fa-calendar-edit me-2"></i>{% trans "Edit Schedule" %}{% endblock %}
+
+{% block content %}
+<div class="content">
+    <div class="container-fluid">
+        <!-- Back Button -->
+        <div class="mb-3">
+            <a href="{% url 'scheduler:student_schedules' student.pk %}" class="btn btn-outline-secondary btn-sm">
+                <i class="fas fa-arrow-left me-1"></i>{% trans "Back to Schedules" %}
+            </a>
+        </div>
+
+        <!-- Form Card -->
+        <div class="card border-0 shadow-sm">
+            <div class="card-header bg-light border-bottom">
+                <h5 class="mb-0">
+                    <i class="fas fa-user-circle me-2"></i>{{ student.name }}
+                    <span class="text-muted fs-6 ms-2">{{ schedule.get_weekday_display }} at {{ schedule.start_time|time:"H:i" }}</span>
+                </h5>
+            </div>
+            
+            <div class="card-body p-4">
+                <form method="POST" class="needs-validation" novalidate>
+                    {% csrf_token %}
+
+                    <!-- Day Selection -->
+                    <div class="mb-4">
+                        <label for="{{ form.weekday.id_for_label }}" class="form-label fw-semibold">
+                            <i class="fas fa-calendar-day me-2 text-primary"></i>{% trans "Day of Week" %}
+                        </label>
+                        {{ form.weekday }}
+                        {% if form.weekday.errors %}
+                        <div class="invalid-feedback d-block">
+                            {{ form.weekday.errors.0 }}
+                        </div>
+                        {% endif %}
+                        <small class="form-text text-muted d-block mt-2">
+                            {% trans "Change the day to move the weekly session. Only affects future sessions." %}
+                        </small>
+                    </div>
+
+                    <!-- Time Selection -->
+                    <div class="mb-4">
+                        <label for="{{ form.start_time.id_for_label }}" class="form-label fw-semibold">
+                            <i class="fas fa-clock me-2 text-primary"></i>{% trans "Start Time" %}
+                        </label>
+                        {{ form.start_time }}
+                        {% if form.start_time.errors %}
+                        <div class="invalid-feedback d-block">
+                            {{ form.start_time.errors.0 }}
+                        </div>
+                        {% endif %}
+                        <small class="form-text text-muted d-block mt-2">
+                            {% trans "Change the session start time. May affect prayer time blocking and other schedules." %}
+                        </small>
+                    </div>
+
+                    <!-- Active Toggle -->
+                    <div class="mb-4">
+                        <div class="form-check form-switch">
+                            {% if form.is_active.value %}
+                                <input class="form-check-input" type="checkbox" id="{{ form.is_active.id_for_label }}" name="{{ form.is_active.name }}" checked>
+                            {% else %}
+                                <input class="form-check-input" type="checkbox" id="{{ form.is_active.id_for_label }}" name="{{ form.is_active.name }}">
+                            {% endif %}
+                            <label class="form-check-label fw-semibold" for="{{ form.is_active.id_for_label }}">
+                                <i class="fas fa-power-off me-2"></i>{% trans "Active Schedule" %}
+                            </label>
+                        </div>
+                        <small class="form-text text-muted d-block mt-2">
+                            {% trans "Temporarily pause this schedule without deleting it. No new sessions will be generated when inactive." %}
+                        </small>
+                    </div>
+
+                    <!-- Info Box -->
+                    <div class="alert alert-info border-0 mb-4" role="alert">
+                        <i class="fas fa-lightbulb me-2"></i>
+                        <strong>{% trans "What happens when you save:" %}</strong>
+                        <ul class="mb-0 mt-2 ms-3">
+                            <li>{% trans "Future sessions will use the new day and time" %}</li>
+                            <li>{% trans "Past sessions remain unchanged" %}</li>
+                            <li>{% trans "A new generation cycle will create sessions based on the updated rule" %}</li>
+                        </ul>
+                    </div>
+
+                    <!-- Form Actions -->
+                    <div class="d-flex gap-2 justify-content-end">
+                        <a href="{% url 'scheduler:student_schedules' student.pk %}" class="btn btn-secondary">
+                            {% trans "Cancel" %}
+                        </a>
+                        <button type="submit" class="btn btn-primary">
+                            <i class="fas fa-save me-1"></i>{% trans "Save Changes" %}
+                        </button>
+                    </div>
+                </form>
+            </div>
+        </div>
+
+        <!-- Additional Info -->
+        <div class="row mt-4">
+            <div class="col-md-6">
+                <div class="card border-0 shadow-sm">
+                    <div class="card-body">
+                        <h6 class="card-title"><i class="fas fa-info-circle me-2 text-info"></i>{% trans "Student Details" %}</h6>
+                        <p class="mb-1"><strong>{% trans "Country:" %}</strong> {{ student.country }}</p>
+                        <p class="mb-1"><strong>{% trans "Timezone:" %}</strong> {{ student.student_timezone }}</p>
+                        <p class="mb-0"><strong>{% trans "Session Duration:" %}</strong> {{ student.session_duration }} {% trans "minutes" %}</p>
+                    </div>
+                </div>
+            </div>
+            <div class="col-md-6">
+                <div class="card border-0 shadow-sm">
+                    <div class="card-body">
+                        <h6 class="card-title"><i class="fas fa-star me-2 text-warning"></i>{% trans "Exceptions" %}</h6>
+                        <p class="text-muted">{% trans "You can create exceptions to override this schedule for specific weeks:" %}</p>
+                        <a href="{% url 'scheduler:manage_exceptions' student.pk %}" class="btn btn-sm btn-outline-warning">
+                            <i class="fas fa-star me-1"></i>{% trans "Manage Exceptions" %}
+                        </a>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+{% include "scheduler/includes/modals.html" %}
+{% endblock %}

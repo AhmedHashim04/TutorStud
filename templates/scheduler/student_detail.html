@@ -61,7 +61,7 @@
             </div>
 
             <!-- Editable Notes -->
-            <div class="card shadow-sm">
+            <div class="card shadow-sm mb-4">
                 <div class="card-header bg-white d-flex justify-content-between align-items-center">
                     <h5 class="mb-0">{% trans "Quick Notes" %}</h5>
                 </div>
@@ -72,6 +72,24 @@
                             placeholder="Type notes here...">{{ student.notes }}</textarea>
                         <button type="submit" class="btn btn-sm btn-outline-primary w-100">Save Notes</button>
                     </form>
+                </div>
+            </div>
+
+            <!-- Schedule Management (NEW) -->
+            <div class="card shadow-sm">
+                <div class="card-header bg-white d-flex justify-content-between align-items-center">
+                    <h5 class="mb-0"><i class="fas fa-calendar-alt me-2"></i>{% trans "Schedule Management" %}</h5>
+                </div>
+                <div class="card-body">
+                    <p class="text-muted small mb-3">{% trans "Manage recurring schedules and apply weekly exceptions." %}</p>
+                    <div class="d-grid gap-2">
+                        <a href="{% url 'scheduler:student_schedules' student.pk %}" class="btn btn-outline-primary btn-sm">
+                            <i class="fas fa-calendar-check me-1"></i>{% trans "Edit Schedules" %}
+                        </a>
+                        <a href="{% url 'scheduler:manage_exceptions' student.pk %}" class="btn btn-outline-warning btn-sm">
+                            <i class="fas fa-star me-1"></i>{% trans "Manage Exceptions" %}
+                        </a>
+                    </div>
                 </div>
             </div>
         </div>

@@ -329,3 +329,196 @@ def api_analytics(request):
     )
     
     return JsonResponse(data)
+
+
+# ============================================================================
+# SCHEDULE MANAGEMENT (NEW - PHASE 3)
+# ============================================================================
+
+def student_schedules(request, student_id):
+    """View and manage recurring schedules for a student."""
+    student = get_object_or_404(Student, pk=student_id)
+    schedules = student.schedules.all().order_by('weekday', 'start_time')
+    
+    context = {
+        'student': student,
+        'schedules': schedules,
+        'student_form': StudentForm(),
+        'session_form': ManualSessionForm(),
+        'students': Student.objects.filter(is_active=True),
+    }
+    return render(request, 'scheduler/student_schedules.html', context)
+
+
+def edit_schedule(request, pk):
+    """Edit a recurring schedule rule."""
+    from .forms import RecurringScheduleForm
+    schedule = get_object_or_404(RecurringSchedule, pk=pk)
+    student = schedule.student
+    
+    if request.method == 'POST':
+        form = RecurringScheduleForm(request.POST, instance=schedule)
+        if form.is_valid():
+            form.save()
+            messages.success(request, "Schedule updated successfully.")
+            # Regenerate sessions after changing schedule
+            from .services import generate_sessions_for_student
+            count, errors = generate_sessions_for_student(student, weeks=4)
+            if count > 0:
+                messages.info(request, f"Generated {count} new sessions based on updated schedule.")
+            if errors:
+                for err in errors:
+                    messages.warning(request, err)
+            return redirect('scheduler:student_schedules', student_id=student.id)
+    else:
+        form = RecurringScheduleForm(instance=schedule)
+    
+    context = {
+        'form': form,
+        'schedule': schedule,
+        'student': student,
+        'student_form': StudentForm(),
+        'session_form': ManualSessionForm(),
+        'students': Student.objects.filter(is_active=True),
+    }
+    return render(request, 'scheduler/schedule_form.html', context)
+
+
+def delete_schedule(request, pk):
+    """Delete a recurring schedule rule."""
+    schedule = get_object_or_404(RecurringSchedule, pk=pk)
+    student = schedule.student
+    
+    if request.method == 'POST':
+        # When deleting a schedule, optionally delete its exceptions too
+        from .models import ScheduleException
+        ScheduleException.objects.filter(schedule=schedule).delete()
+        
+        schedule.delete()
+        messages.success(request, "Schedule deleted successfully.")
+    
+    return redirect('scheduler:student_schedules', student_id=student.id)
+
+
+# ============================================================================
+# SCHEDULE EXCEPTIONS (NEW - PHASE 4)
+# ============================================================================
+
+def manage_exceptions(request, student_id):
+    """View and manage schedule exceptions for a student."""
+    from .models import ScheduleException
+    
+    student = get_object_or_404(Student, pk=student_id)
+    schedules = student.schedules.filter(is_active=True)
+    
+    # Get all exceptions grouped by schedule
+    exceptions_by_schedule = {}
+    for schedule in schedules:
+        exceptions_by_schedule[schedule] = schedule.exceptions.all().order_by('-week_start_date')
+    
+    context = {
+        'student': student,
+        'schedules': schedules,
+        'exceptions_by_schedule': exceptions_by_schedule,
+        'student_form': StudentForm(),
+        'session_form': ManualSessionForm(),
+        'students': Student.objects.filter(is_active=True),
+    }
+    return render(request, 'scheduler/schedule_exceptions.html', context)
+
+
+def create_exception(request, schedule_id):
+    """Create a new schedule exception."""
+    from .forms import ScheduleExceptionForm
+    
+    schedule = get_object_or_404(RecurringSchedule, pk=schedule_id)
+    student = schedule.student
+    
+    if request.method == 'POST':
+        form = ScheduleExceptionForm(request.POST)
+        if form.is_valid():
+            exception = form.save(commit=False)
+            exception.schedule = schedule
+            exception.created_by = str(request.user) if request.user.is_authenticated else 'System'
+            exception.save()
+            
+            messages.success(request, f"Exception created: {exception.get_detailed_description()}")
+            
+            # Regenerate sessions to apply the exception
+            from .services import generate_sessions_for_student
+            count, errors = generate_sessions_for_student(student, weeks=4)
+            if count > 0:
+                messages.info(request, f"Regenerated {count} sessions with new exception applied.")
+            if errors:
+                for err in errors:
+                    messages.warning(request, err)
+            
+            return redirect('scheduler:manage_exceptions', student_id=student.id)
+    else:
+        form = ScheduleExceptionForm()
+    
+    context = {
+        'form': form,
+        'schedule': schedule,
+        'student': student,
+        'student_form': StudentForm(),
+        'session_form': ManualSessionForm(),
+        'students': Student.objects.filter(is_active=True),
+    }
+    return render(request, 'scheduler/exception_form.html', context)
+
+
+def edit_exception(request, pk):
+    """Edit an existing schedule exception."""
+    from .forms import ScheduleExceptionForm
+    from .models import ScheduleException
+    
+    exception = get_object_or_404(ScheduleException, pk=pk)
+    schedule = exception.schedule
+    student = schedule.student
+    
+    if request.method == 'POST':
+        form = ScheduleExceptionForm(request.POST, instance=exception)
+        if form.is_valid():
+            form.save()
+            messages.success(request, "Exception updated successfully.")
+            
+            # Regenerate sessions
+            from .services import generate_sessions_for_student
+            count, errors = generate_sessions_for_student(student, weeks=4)
+            if count > 0:
+                messages.info(request, f"Regenerated {count} sessions with updated exception.")
+            
+            return redirect('scheduler:manage_exceptions', student_id=student.id)
+    else:
+        form = ScheduleExceptionForm(instance=exception)
+    
+    context = {
+        'form': form,
+        'exception': exception,
+        'schedule': schedule,
+        'student': student,
+        'student_form': StudentForm(),
+        'session_form': ManualSessionForm(),
+        'students': Student.objects.filter(is_active=True),
+    }
+    return render(request, 'scheduler/exception_form.html', context)
+
+
+def delete_exception(request, pk):
+    """Delete a schedule exception."""
+    from .models import ScheduleException
+    
+    exception = get_object_or_404(ScheduleException, pk=pk)
+    schedule = exception.schedule
+    student = schedule.student
+    
+    if request.method == 'POST':
+        exception.delete()
+        messages.success(request, "Exception deleted successfully.")
+        
+        # Regenerate to remove the exception's effects
+        from .services import generate_sessions_for_student
+        generate_sessions_for_student(student, weeks=4)
+    
+    return redirect('scheduler:manage_exceptions', student_id=student.id)
