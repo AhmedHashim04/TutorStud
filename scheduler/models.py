@@ -199,6 +199,14 @@ class Session(models.Model):
         return self.start_time.astimezone(self.student.student_timezone)
 
     @property
+    def tutor_time_formatted(self):
+        return self.tutor_time.strftime("%I:%M %p").lstrip("0")
+        
+    @property
+    def student_time_formatted(self):
+        return self.student_time.strftime("%I:%M %p").lstrip("0")
+
+    @property
     def is_payable(self):
         """Teacher gets paid if student attended or no-showed."""
         return self.status in ['attended', 'absent']

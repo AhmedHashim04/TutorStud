@@ -31,7 +31,7 @@
                                 <strong class="d-block">{{ student.next_session.start_time|date:"D, M j" }}</strong>
                                 <span class="text-primary">{{ student.next_session.tutor_time|time:"g:i A" }} 🇪🇬</span>
                                 <span class="text-muted mx-1">|</span>
-                                <span class="text-secondary">{{ student.next_session.student_time|time:"g:i A" }} {{ student.get_country_display|slice:":2" }}</span>
+                                <span class="text-secondary">{{student.next_session.student_time_formatted }} {{ student.get_country_display|slice:":2" }} {{ student.country }}</span>
                             </div>
                         {% else %}
                             <div class="bg-light p-2 rounded text-muted">

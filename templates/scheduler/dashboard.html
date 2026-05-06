@@ -51,12 +51,12 @@
                                     <div class="d-flex align-items-center gap-3 mt-2 mb-2">
                                         <div class="bg-light px-2 py-1 rounded">
                                             <small class="text-muted d-block" style="font-size: 0.7rem;">🇪🇬 MY TIME</small>
-                                            <strong>{{ session.tutor_time|time:"g:i A" }}</strong>
+                                            <strong>{{ session.tutor_time_formatted }}</strong>
                                         </div>
                                         <i class="fas fa-arrow-right text-muted" style="font-size: 0.8rem;"></i>
                                         <div class="bg-light px-2 py-1 rounded border-start border-primary border-3">
                                             <small class="text-muted d-block" style="font-size: 0.7rem;">STUDENT ({{ session.student.get_country_display|slice:":2" }})</small>
-                                            <strong>{{ session.student_time|time:"g:i A" }}</strong>
+                                            <strong>{{ session.student_time_formatted }}</strong>
                                         </div>
                                     </div>
                                     
@@ -120,7 +120,7 @@
                                 <strong>{{ session.start_time|date:"D, M j" }}</strong>
                                 <div class="mt-1 d-flex justify-content-between align-items-center">
                                     <span>{{ session.student.name }}</span>
-                                    <small class="text-muted">{{ session.tutor_time|time:"g:i A" }} 🇪🇬</small>
+                                    <small class="text-muted">{{ session.tutor_time_formatted }} 🇪🇬</small>
                                 </div>
                             </div>
                         {% endfor %}
