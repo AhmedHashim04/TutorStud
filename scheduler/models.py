@@ -19,7 +19,6 @@ WEEKDAYS = [
 
 class Student(models.Model):
     name = models.CharField(max_length=200)
-    phone = models.CharField(max_length=20, blank=True)
     notes = models.TextField(blank=True)
     country = models.CharField(max_length=100, blank=True)
     timezone = models.CharField(max_length=64, default='UTC')
@@ -75,7 +74,7 @@ class Subscription(models.Model):
 
     @property
     def monthly_earnings(self):
-        return self.weekly_earnings * Decimal('4.33')
+        return self.weekly_earnings * Decimal('4')
 
 
 class RecurringSchedule(models.Model):

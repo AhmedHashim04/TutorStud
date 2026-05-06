@@ -68,7 +68,7 @@ When a student misses a session, the tutor can schedule a **make-up session** di
 
 ### Adding a Student
 1. Go to **Students → Add Student**
-2. Fill in the student's name, phone, country, and timezone (e.g., *Germany / Berlin*)
+2. Fill in the student's name, country, and timezone (e.g., *Germany / Berlin*)
 3. Set their subscription: sessions per week, session duration (30 or 60 min), hourly rate
 4. The system immediately previews estimated weekly and monthly earnings
 5. Click **Create Student**

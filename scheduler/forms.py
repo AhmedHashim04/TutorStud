@@ -92,10 +92,9 @@ class StudentForm(forms.ModelForm):
 
     class Meta:
         model = Student
-        fields = ['name', 'phone', 'country', 'timezone', 'notes', 'is_active']
+        fields = ['name', 'country', 'timezone', 'notes', 'is_active']
         widgets = {
             'name': forms.TextInput(attrs={'placeholder': _('Student full name')}),
-            'phone': forms.TextInput(attrs={'placeholder': _('+20 10...')}),
             'notes': forms.Textarea(attrs={'rows': 3, 'placeholder': _('Optional notes about this student...')}),
         }
         labels = {'is_active': _('Active student')}

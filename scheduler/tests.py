@@ -32,7 +32,6 @@ class FormAndPricingTests(TestCase):
     def test_student_form_auto_timezone(self):
         form = StudentForm(data={
             'name': 'A',
-            'phone': '',
             'country': 'Germany',
             'timezone': '',
             'notes': '',

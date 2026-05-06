@@ -4,9 +4,9 @@ from .models import Student, Subscription, WorkingHours, WorkingHoursRange, Exce
 
 @admin.register(Student)
 class StudentAdmin(admin.ModelAdmin):
-    list_display = ['name', 'phone', 'is_active', 'created_at']
+    list_display = ['name', 'is_active', 'created_at']
     list_filter = ['is_active']
-    search_fields = ['name', 'phone']
+    search_fields = ['name']
 
 
 @admin.register(Subscription)

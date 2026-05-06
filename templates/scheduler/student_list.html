@@ -25,9 +25,7 @@
                     <div style="font-size:12px;color:var(--text-muted)">
                         {% if student.country %}{{ student.country }} · {% endif %}{{ student.timezone|default:"UTC" }}
                     </div>
-                    {% if student.phone %}
-                    <div class="text-muted" style="font-size:12px"><i class="fas fa-phone me-1"></i>{{ student.phone }}</div>
-                    {% endif %}
+                    {# phone field removed - no display #}
                 </div>
                 {% if not student.is_active %}<span class="badge bg-secondary">{% trans "Inactive" %}</span>{% endif %}
             </div>

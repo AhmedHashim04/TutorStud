@@ -57,17 +57,17 @@ class Command(BaseCommand):
 
         # Students + subscriptions
         students_data = [
-            ('Ahmed Hassan',     '01012345678', 3, 60, Decimal('200')),
-            ('Sara Mohamed',     '01098765432', 2, 60, Decimal('180')),
-            ('Omar Ali',         '01187654321', 4, 30, Decimal('150')),
-            ('Nour Ibrahim',     '01234567890', 3, 60, Decimal('200')),
-            ('Youssef Khaled',   '01156789012', 2, 60, Decimal('170')),
+            ('Ahmed Hassan',     3, 60, Decimal('200')),
+            ('Sara Mohamed',     2, 60, Decimal('180')),
+            ('Omar Ali',         4, 30, Decimal('150')),
+            ('Nour Ibrahim',     3, 60, Decimal('200')),
+            ('Youssef Khaled',   2, 60, Decimal('170')),
         ]
         students = []
-        for name, phone, spw, dur, rate in students_data:
+        for name, spw, dur, rate in students_data:
             student, _ = Student.objects.get_or_create(
                 name=name,
-                defaults={'phone': phone, 'is_active': True}
+                defaults={'is_active': True}
             )
             Subscription.objects.get_or_create(
                 student=student,
