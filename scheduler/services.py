@@ -153,7 +153,23 @@ def generate_sessions_for_student(student, weeks=4):
 
     created_count = 0
     errors_log = []
+    seen_error_keys = set()
     today = timezone.localdate(timezone=CAIRO_TZ)
+
+    def log_generation_error(start_dt, error_text, is_extra=False):
+        recurring_prefix = "This time slot is protected by a recurring reservation ("
+        error_key = error_text
+
+        if error_text.startswith(recurring_prefix):
+            blocker_name = error_text[len(recurring_prefix):].split(")", 1)[0].strip()
+            error_key = f"recurring-reservation:{blocker_name}"
+
+        if error_key in seen_error_keys:
+            return
+
+        seen_error_keys.add(error_key)
+        extra_label = " (extra)" if is_extra else ""
+        errors_log.append(f"{start_dt.strftime('%Y-%m-%d %H:%M')}{extra_label}: {error_text}")
 
     schedules = RecurringSchedule.objects.filter(student=student, is_active=True)
     
@@ -184,7 +200,8 @@ def generate_sessions_for_student(student, weeks=4):
                 # Validate slot
                 errors = validate_session(actual_start_dt, student.session_duration)
                 if errors:
-                    errors_log.append(f"{actual_start_dt.strftime('%Y-%m-%d %H:%M')}: {', '.join(errors)}")
+                    for error in errors:
+                        log_generation_error(actual_start_dt, error)
                 else:
                     # Create session
                     Session.objects.create(
@@ -206,7 +223,8 @@ def generate_sessions_for_student(student, weeks=4):
                 if not already_exists_extra:
                     errors = validate_session(extra_dt, student.session_duration)
                     if errors:
-                        errors_log.append(f"{extra_dt.strftime('%Y-%m-%d %H:%M')} (extra): {', '.join(errors)}")
+                        for error in errors:
+                            log_generation_error(extra_dt, error, is_extra=True)
                     else:
                         Session.objects.create(
                             student=student,

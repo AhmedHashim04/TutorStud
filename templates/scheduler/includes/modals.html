@@ -1,0 +1,54 @@
+<div class="modal fade" id="schedulerConfirmModal" tabindex="-1" aria-hidden="true">
+  <div class="modal-dialog modal-dialog-centered">
+    <div class="modal-content border-0 shadow">
+      <div class="modal-header border-0 pb-0">
+        <h5 class="modal-title" id="schedulerConfirmModalTitle">Confirm</h5>
+        <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+      </div>
+      <div class="modal-body pt-3">
+        <p class="mb-0" id="schedulerConfirmModalBody"></p>
+      </div>
+      <div class="modal-footer border-0 pt-0">
+        <button type="button" class="btn btn-outline-secondary" data-bs-dismiss="modal">Cancel</button>
+        <button type="button" class="btn btn-danger" id="schedulerConfirmModalAction">Continue</button>
+      </div>
+    </div>
+  </div>
+</div>
+
+<script>
+(function () {
+  let confirmAction = null;
+  const modalElement = document.getElementById('schedulerConfirmModal');
+
+  if (!modalElement) {
+    return;
+  }
+
+  const modal = bootstrap.Modal.getOrCreateInstance(modalElement);
+  const titleElement = document.getElementById('schedulerConfirmModalTitle');
+  const bodyElement = document.getElementById('schedulerConfirmModalBody');
+  const actionButton = document.getElementById('schedulerConfirmModalAction');
+
+  window.openSchedulerConfirmModal = function (options) {
+    confirmAction = typeof options.onConfirm === 'function' ? options.onConfirm : null;
+    titleElement.textContent = options.title || 'Confirm';
+    bodyElement.textContent = options.body || 'Are you sure?';
+    actionButton.textContent = options.confirmText || 'Continue';
+    actionButton.className = 'btn ' + (options.confirmClass || 'btn-danger');
+    modal.show();
+  };
+
+  actionButton.addEventListener('click', function () {
+    modal.hide();
+    if (confirmAction) {
+      confirmAction();
+      confirmAction = null;
+    }
+  });
+
+  modalElement.addEventListener('hidden.bs.modal', function () {
+    confirmAction = null;
+  });
+})();
+</script>
