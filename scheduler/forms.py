@@ -2,7 +2,7 @@ from django import forms
 from django.utils import timezone
 from django.utils.translation import gettext_lazy as _
 
-from .models import Student, Subscription, Session, RecurringSchedule, WorkingHours, ExceptionDay, PrayerTime, DEFAULT_HOURLY_RATE, WEEKDAYS
+from .models import Student, Subscription, Session, RecurringSchedule, WorkingHours, ExceptionDay, PrayerTime, DEFAULT_HOURLY_RATE
 
 PRAYER_TIME_FIELDS = ['fajr', 'dhuhr', 'asr', 'maghrib', 'isha']
 
@@ -151,7 +151,11 @@ class RecurringScheduleForm(forms.ModelForm):
     class Meta:
         model = RecurringSchedule
         fields = ['day_of_week', 'start_time', 'duration', 'is_active']
-        widgets = {'start_time': forms.TimeInput(attrs={'type': 'time'})}
+        widgets = {
+            'day_of_week': forms.Select(attrs={'class': 'form-select form-control'}),
+            'start_time': forms.TimeInput(attrs={'type': 'time', 'class': 'form-control'}),
+            'duration': forms.Select(attrs={'class': 'form-select form-control'}),
+        }
         labels = {'day_of_week': _('Day of week'), 'start_time': _('Start time (Cairo)'), 'duration': _('Session duration'), 'is_active': _('Active schedule')}
 
     def __init__(self, *args, **kwargs):
@@ -204,13 +208,25 @@ class WorkingHoursForm(forms.ModelForm):
     class Meta:
         model = WorkingHours
         fields = ['weekday', 'start_time', 'end_time', 'is_working']
-        widgets = {'start_time': forms.TimeInput(attrs={'type': 'time'}), 'end_time': forms.TimeInput(attrs={'type': 'time'})}
+        widgets = {
+            'start_time': forms.TimeInput(attrs={'type': 'time', 'class': 'form-control'}),
+            'end_time': forms.TimeInput(attrs={'type': 'time', 'class': 'form-control'})
+        }
 
 class ExceptionDayForm(forms.ModelForm):
     class Meta:
         model = ExceptionDay
         fields = ['date', 'reason']
-        widgets = {'date': forms.DateInput(attrs={'type': 'date'}), 'reason': forms.TextInput(attrs={'placeholder': _('e.g. Public holiday, sick day…')})}
+        widgets = {
+            'date': forms.DateInput(attrs={
+                'type': 'date',
+                'class': 'form-control'
+            }),
+            'reason': forms.TextInput(attrs={
+                'placeholder': _('e.g. Public holiday, sick day…'),
+                'class': 'form-control'
+            })
+        }
 
 class PrayerTimeForm(forms.ModelForm):
     class Meta:

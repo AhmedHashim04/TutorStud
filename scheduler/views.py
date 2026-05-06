@@ -9,7 +9,7 @@ Timezone convention:
 """
 import json
 import pytz
-from datetime import datetime, timedelta
+from datetime import datetime, timedelta, time
 
 from django.shortcuts import render, redirect, get_object_or_404
 from django.contrib import messages
@@ -18,7 +18,7 @@ from django.utils import timezone
 from django.db import models
 from django.utils.translation import gettext as _
 
-from .models import Student, Subscription, Session, RecurringSchedule, WorkingHours, ExceptionDay, PrayerTime, DEFAULT_HOURLY_RATE
+from .models import Student, Subscription, Session, RecurringSchedule, WorkingHours, WorkingHoursRange, ExceptionDay, PrayerTime, DEFAULT_HOURLY_RATE, WEEKDAYS
 from .forms import (
     StudentForm, SubscriptionForm, SessionForm, QuickSessionForm,
     RecurringScheduleForm, WorkingHoursForm, ExceptionDayForm,
@@ -450,16 +450,80 @@ def session_makeup(request, pk):
 
 
 def working_hours(request):
-    hours = WorkingHours.objects.all().order_by('weekday')
+    hours_dict = {h.weekday: h for h in WorkingHours.objects.prefetch_related('ranges').all()}
+
     if request.method == 'POST':
-        form = WorkingHoursForm(request.POST)
-        if form.is_valid():
-            form.save()
-            messages.success(request, _('Working hours saved.'))
-            return redirect('scheduler:working_hours')
-    else:
-        form = WorkingHoursForm()
-    return render(request, 'scheduler/working_hours.html', {'hours': hours, 'form': form})
+        for weekday, day_name in WEEKDAYS:
+            is_working_key = f'day_{weekday}_is_working'
+            is_working = is_working_key in request.POST
+
+            wh, created = WorkingHours.objects.get_or_create(
+                weekday=weekday,
+                defaults={'start_time': time(9, 0), 'end_time': time(17, 0), 'is_working': is_working}
+            )
+            wh.is_working = is_working
+
+            starts = request.POST.getlist(f'day_{weekday}_start')
+            ends = request.POST.getlist(f'day_{weekday}_end')
+
+            parsed_ranges = []
+            for start_raw, end_raw in zip(starts, ends):
+                if not start_raw or not end_raw:
+                    continue
+                try:
+                    start_t = datetime.strptime(start_raw, '%H:%M').time()
+                    end_t = datetime.strptime(end_raw, '%H:%M').time()
+                except ValueError:
+                    continue
+                if start_t >= end_t:
+                    continue
+                parsed_ranges.append((start_t, end_t))
+
+            if is_working and not parsed_ranges:
+                parsed_ranges = [(time(9, 0), time(17, 0))]
+
+            if parsed_ranges:
+                wh.start_time = parsed_ranges[0][0]
+                wh.end_time = parsed_ranges[0][1]
+            else:
+                wh.start_time = wh.start_time or time(9, 0)
+                wh.end_time = wh.end_time or time(17, 0)
+
+            wh.save()
+
+            wh.ranges.all().delete()
+            for start_t, end_t in parsed_ranges:
+                WorkingHoursRange.objects.create(
+                    working_hours=wh,
+                    start_time=start_t,
+                    end_time=end_t,
+                )
+        
+        messages.success(request, _('Working hours saved.'))
+        return redirect('scheduler:working_hours')
+
+    days = []
+    for weekday, name in WEEKDAYS:
+        wh = hours_dict.get(weekday)
+        ranges = []
+        if wh and wh.is_working:
+            ranges_qs = list(wh.ranges.all())
+            if ranges_qs:
+                ranges = ranges_qs
+            else:
+                ranges = [type('Range', (), {'start_time': wh.start_time, 'end_time': wh.end_time})()]
+
+        if not ranges:
+            ranges = [type('Range', (), {'start_time': time(9, 0), 'end_time': time(17, 0)})()]
+
+        days.append({
+            'weekday': weekday,
+            'name': name,
+            'wh': wh,
+            'ranges': ranges,
+        })
+
+    return render(request, 'scheduler/working_hours.html', {'days': days})
 
 
 def exception_days(request):

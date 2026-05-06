@@ -5,24 +5,109 @@
 
 {% block extra_css %}
 <style>
+.form-shell {
+    --primary: #6366f1;
+    --secondary: #8b5cf6;
+    --surface: #ffffff;
+    --border: #e2e8f0;
+    --text: #1e293b;
+    --text-muted: #64748b;
+}
+
 .day-card {
-    background: var(--bg);
+    background: linear-gradient(135deg, #ffffff 0%, #f8fafc 100%);
     border-radius: 14px;
-    padding: 16px;
-    border: 1px solid var(--border);
-    margin-bottom: 12px;
+    padding: 20px;
+    border: 2px solid var(--border);
+    margin-bottom: 16px;
+    transition: all 0.2s ease;
 }
+
+.day-card:hover {
+    border-color: #cbd5e1;
+    box-shadow: 0 4px 12px rgba(0, 0, 0, 0.05);
+}
+
+.day-card .day-name {
+    font-weight: 700;
+    font-size: 16px;
+    color: var(--text);
+    min-width: 140px;
+}
+
 .day-card input[type="time"] {
-    min-height: 44px;
-    padding: 10px 12px;
-    border-radius: 12px;
-    border: 1px solid var(--border);
-    background: var(--surface);
+    min-height: 48px !important;
+    padding: 12px 16px !important;
+    border-radius: 10px !important;
+    border: 2px solid var(--border) !important;
+    background: #f8fafc !important;
+    color: var(--text) !important;
+    font-size: 14px !important;
+    transition: all 0.2s ease !important;
+    box-shadow: 0 1px 3px rgba(0, 0, 0, 0.05) !important;
 }
+
+.day-card input[type="time"]:hover {
+    border-color: #cbd5e1 !important;
+    background: #ffffff !important;
+}
+
 .day-card input[type="time"]:focus {
-    border-color: var(--primary);
-    box-shadow: 0 0 0 4px rgba(99, 102, 241, .12);
-    outline: none;
+    outline: none !important;
+    border-color: var(--primary) !important;
+    background: #ffffff !important;
+    box-shadow: 0 0 0 3px rgba(99, 102, 241, 0.15), 0 0 0 6px rgba(99, 102, 241, 0.05) !important;
+}
+
+.form-check-input {
+    width: 48px;
+    height: 28px;
+    border: 2px solid var(--border);
+    background-color: #f8fafc;
+    cursor: pointer;
+    transition: all 0.2s ease;
+}
+
+.form-check-input:checked {
+    background-color: var(--primary) !important;
+    border-color: var(--primary) !important;
+}
+
+.form-check-input:hover {
+    border-color: #cbd5e1;
+}
+
+.day-times {
+    gap: 12px;
+}
+
+.day-times .time-label {
+    font-size: 13px;
+    color: var(--text-muted);
+    font-weight: 500;
+    white-space: nowrap;
+}
+
+.ranges-wrap {
+    width: 100%;
+    margin-top: 8px;
+}
+
+.range-row {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    margin-bottom: 8px;
+}
+
+.range-row .form-control {
+    max-width: 160px;
+}
+
+.range-actions {
+    display: flex;
+    gap: 8px;
+    margin-top: 8px;
 }
 </style>
 {% endblock %}
@@ -37,7 +122,7 @@
 
 <div class="card">
     <div class="card-header"><i class="fas fa-business-time me-2 text-primary"></i>{% trans "Weekly Schedule" %}</div>
-    <div class="card-body">
+    <div class="card-body form-shell">
         <form method="post">
             {% csrf_token %}
             <div class="row g-3">
@@ -45,7 +130,7 @@
                 <div class="col-12">
                     <div class="day-card">
                         <div class="d-flex align-items-center gap-3 flex-wrap">
-                            <div style="width:120px;font-weight:600">{{ day.name }}</div>
+                            <div class="day-name">{{ day.name }}</div>
                             <div class="form-check form-switch">
                                 <input class="form-check-input" type="checkbox" name="day_{{ day.weekday }}_is_working"
                                     id="working_{{ day.weekday }}"
@@ -53,13 +138,25 @@
                                     onchange="toggleDay({{ day.weekday }}, this.checked)">
                                 <label class="form-check-label" for="working_{{ day.weekday }}">{% trans "Working" %}</label>
                             </div>
-                            <div class="d-flex align-items-center gap-2 day-times-{{ day.weekday }}" {% if not day.wh or not day.wh.is_working %}style="opacity:.4;pointer-events:none"{% endif %}>
-                                <span class="text-muted" style="font-size:13px">{% trans "From" %}</span>
-                                <input type="time" name="day_{{ day.weekday }}_start" class="form-control form-control-sm" style="width:132px"
-                                    value="{{ day.wh.start_time|time:'H:i'|default:'09:00' }}">
-                                <span class="text-muted" style="font-size:13px">{% trans "To" %}</span>
-                                <input type="time" name="day_{{ day.weekday }}_end" class="form-control form-control-sm" style="width:132px"
-                                    value="{{ day.wh.end_time|time:'H:i'|default:'17:00' }}">
+                            <div class="ranges-wrap day-times day-times-{{ day.weekday }}" {% if not day.wh or not day.wh.is_working %}style="opacity:.4;pointer-events:none"{% endif %}>
+                                <div class="ranges-list" id="ranges-{{ day.weekday }}">
+                                    {% for r in day.ranges %}
+                                    <div class="range-row">
+                                        <span class="time-label">{% trans "From" %}</span>
+                                        <input type="time" name="day_{{ day.weekday }}_start" class="form-control" value="{{ r.start_time|time:'H:i' }}">
+                                        <span class="time-label">{% trans "To" %}</span>
+                                        <input type="time" name="day_{{ day.weekday }}_end" class="form-control" value="{{ r.end_time|time:'H:i' }}">
+                                        <button type="button" class="btn btn-sm btn-outline-danger" onclick="removeRange(this)">
+                                            <i class="fas fa-trash"></i>
+                                        </button>
+                                    </div>
+                                    {% endfor %}
+                                </div>
+                                <div class="range-actions">
+                                    <button type="button" class="btn btn-sm btn-outline-primary" onclick="addRange({{ day.weekday }})">
+                                        <i class="fas fa-plus me-1"></i>{% trans "Add Range" %}
+                                    </button>
+                                </div>
                             </div>
                         </div>
                     </div>
@@ -78,6 +175,40 @@ function toggleDay(weekday, isWorking) {
     if (el) {
         el.style.opacity = isWorking ? '1' : '0.4';
         el.style.pointerEvents = isWorking ? 'auto' : 'none';
+    }
+}
+
+function addRange(weekday) {
+    const container = document.getElementById('ranges-' + weekday);
+    if (!container) return;
+
+    const row = document.createElement('div');
+    row.className = 'range-row';
+    row.innerHTML = `
+        <span class="time-label">From</span>
+        <input type="time" name="day_${weekday}_start" class="form-control" value="09:00">
+        <span class="time-label">To</span>
+        <input type="time" name="day_${weekday}_end" class="form-control" value="17:00">
+        <button type="button" class="btn btn-sm btn-outline-danger" onclick="removeRange(this)">
+            <i class="fas fa-trash"></i>
+        </button>
+    `;
+    container.appendChild(row);
+}
+
+function removeRange(btn) {
+    const row = btn.closest('.range-row');
+    const container = row ? row.parentElement : null;
+    if (!row || !container) return;
+    row.remove();
+
+    if (!container.querySelector('.range-row')) {
+        const wrap = container.closest('.ranges-wrap');
+        if (!wrap) return;
+        const dayClass = Array.from(wrap.classList).find(c => c.startsWith('day-times-'));
+        if (!dayClass) return;
+        const weekday = dayClass.replace('day-times-', '');
+        addRange(weekday);
     }
 }
 </script>

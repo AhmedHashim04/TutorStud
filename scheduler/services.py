@@ -143,18 +143,35 @@ def get_working_hours(d):
         return None
 
 
+def get_working_intervals(d):
+    """
+    Return a list of (start_dt, end_dt) Cairo-aware intervals for the given date.
+    Supports multiple ranges per day; falls back to the legacy single range.
+    """
+    wh = get_working_hours(d)
+    if not wh:
+        return []
+
+    ranges = list(wh.ranges.all())
+    if not ranges:
+        return [(make_aware_cairo(d, wh.start_time), make_aware_cairo(d, wh.end_time))]
+
+    return [(make_aware_cairo(d, r.start_time), make_aware_cairo(d, r.end_time)) for r in ranges]
+
+
 def is_within_working_hours(start_time, end_time):
     """
     Return True if [start_time, end_time) fits entirely within the tutor's
     working hours for that Cairo day.
     """
     d = to_cairo(start_time).date()
-    wh = get_working_hours(d)
-    if not wh:
-        return False
-    work_start = make_aware_cairo(d, wh.start_time)
-    work_end = make_aware_cairo(d, wh.end_time)
-    return ensure_aware(start_time) >= work_start and ensure_aware(end_time) <= work_end
+    start_time = ensure_aware(start_time)
+    end_time = ensure_aware(end_time)
+
+    for work_start, work_end in get_working_intervals(d):
+        if start_time >= work_start and end_time <= work_end:
+            return True
+    return False
 
 
 # ─── Exception Days ───────────────────────────────────────────────────────────
@@ -227,11 +244,15 @@ def validate_session(start_time, end_time, exclude_session_id=None, skip_working
         errors.append(f"{d.strftime('%A, %B %-d')} is marked as an exception day (tutor unavailable).")
 
     if not skip_working_hours and not is_within_working_hours(start_time, end_time):
-        wh = get_working_hours(d)
-        if wh:
+        intervals = get_working_intervals(d)
+        if intervals:
+            windows = ', '.join(
+                f"{start_dt.strftime('%H:%M')} – {end_dt.strftime('%H:%M')}"
+                for start_dt, end_dt in intervals
+            )
             errors.append(
                 f"Session must be within working hours "
-                f"({wh.start_time.strftime('%H:%M')} – {wh.end_time.strftime('%H:%M')} Cairo time)."
+                f"({windows} Cairo time)."
             )
         else:
             errors.append(f"Tutor is not working on {d.strftime('%A')}.")
@@ -386,6 +407,7 @@ def suggest_next_slot(duration_minutes, from_dt=None, max_days=14):
         current += timedelta(minutes=15 - rem)
 
     duration = timedelta(minutes=duration_minutes)
+    step = timedelta(minutes=15)
     deadline = current + timedelta(days=max_days)
 
     while current < deadline:
@@ -395,23 +417,30 @@ def suggest_next_slot(duration_minutes, from_dt=None, max_days=14):
             current = make_aware_cairo(d + timedelta(days=1), time(0, 0))
             continue
 
-        wh = get_working_hours(d)
-        if not wh:
+        intervals = get_working_intervals(d)
+        if not intervals:
             current = make_aware_cairo(d + timedelta(days=1), time(0, 0))
             continue
 
-        work_start = make_aware_cairo(d, wh.start_time)
-        work_end = make_aware_cairo(d, wh.end_time)
+        # Jump to the next interval start when current is outside all intervals.
+        in_any_interval = False
+        for interval_start, interval_end in intervals:
+            if interval_start <= current < interval_end:
+                in_any_interval = True
+                break
+            if current < interval_start:
+                current = interval_start
+                in_any_interval = True
+                break
 
-        if current < work_start:
-            current = work_start
-            continue
-
-        if current + duration > work_end:
+        if not in_any_interval:
             current = make_aware_cairo(d + timedelta(days=1), time(0, 0))
             continue
 
         slot_end = current + duration
+        if not is_within_working_hours(current, slot_end):
+            current += step
+            continue
 
         prayer_jumped = False
         for block_start, block_end in get_prayer_blocked_intervals(d):
@@ -425,6 +454,9 @@ def suggest_next_slot(duration_minutes, from_dt=None, max_days=14):
         conflicts = check_overlap(current, slot_end)
         if conflicts:
             current = to_cairo(max(s.end_time for s in conflicts))
+            rem = current.minute % 15
+            if rem:
+                current += timedelta(minutes=15 - rem)
             continue
 
         return current
@@ -492,11 +524,11 @@ def get_occupancy_rate(start_date, end_date):
     current = start_date
     while current <= end_date:
         if not is_exception_day(current):
-            wh = get_working_hours(current)
-            if wh:
+            intervals = get_working_intervals(current)
+            for start_dt, end_dt in intervals:
                 total_available += timedelta(
-                    hours=wh.end_time.hour - wh.start_time.hour,
-                    minutes=wh.end_time.minute - wh.start_time.minute,
+                    hours=end_dt.hour - start_dt.hour,
+                    minutes=end_dt.minute - start_dt.minute,
                 )
         current += timedelta(days=1)
 

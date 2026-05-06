@@ -112,6 +112,18 @@ class WorkingHours(models.Model):
         return f"{self.get_weekday_display()}: {self.start_time} - {self.end_time}"
 
 
+class WorkingHoursRange(models.Model):
+    working_hours = models.ForeignKey(WorkingHours, on_delete=models.CASCADE, related_name='ranges')
+    start_time = models.TimeField()
+    end_time = models.TimeField()
+
+    class Meta:
+        ordering = ['start_time']
+
+    def __str__(self):
+        return f"{self.working_hours.get_weekday_display()}: {self.start_time} - {self.end_time}"
+
+
 class ExceptionDay(models.Model):
     date = models.DateField(unique=True)
     reason = models.CharField(max_length=300, blank=True)
