@@ -1,24 +1,6 @@
-{% extends 'base.html' %}
-{% load i18n %}
-
-{% block page_title %}{% trans "Student Roster" %}{% endblock %}
-
-{% block content %}
-<div class="container-fluid py-4">
-    <div class="d-flex justify-content-between align-items-center mb-4">
-        <h3 class="mb-0">{% trans "All Students" %}</h3>
-    </div>
-
-    <div class="row row-cols-1 row-cols-md-2 row-cols-xl-3 g-4">
-        {% for student in students %}
-        <div class="col">
-            <div class="card h-100 shadow-sm {% if not student.is_active %}bg-light opacity-75{% endif %}">
-                <div class="card-body">
-                    <div class="d-flex justify-content-between align-items-start mb-3">
-                        <h5 class="card-title fw-bold mb-0">
-                            <a href="{% url 'scheduler:student_detail' student.pk %}" class="text-decoration-none text-dark">{{ student.name }}</a>
-                        </h5>
-                        <div class="d-flex gap-2 align-items-center">
+<!-- Student Status Toggle Component -->
+<!-- Usage: {% include "scheduler/includes/student_status_toggle.html" %} -->
+<!-- Expects: student object in context -->
 
 <div class="student-status-toggle">
     <style>
@@ -139,9 +121,9 @@
             </div>
             <span class="toggle-label">
                 {% if student.is_active %}
-                    Active
+                    🟢 Active
                 {% else %}
-                    Inactive
+                    🔴 Inactive
                 {% endif %}
             </span>
             <div class="toggle-spinner"></div>
@@ -240,65 +222,3 @@ function showNotification(message, type) {
     }, 4000);
 }
 </script>
-
-
-                        </div>
-                    </div>
-
-                    <div class="mb-3">
-                        <small class="text-muted d-block mb-1">{% trans "Next Session" %}</small>
-                        {% if student.next_session %}
-                            <div class="bg-light p-2 rounded">
-                                <strong class="d-block">{{ student.next_session.start_time|date:"D, M j" }}</strong>
-                                <span class="text-primary">{{ student.next_session.tutor_time|time:"g:i A" }} 🇪🇬</span>
-                                <span class="text-muted mx-1">|</span>
-                                <span class="text-secondary">{{student.next_session.student_time_formatted }} {{ student.get_country_display|slice:":2" }} {{ student.country }}</span>
-                            </div>
-                        {% else %}
-                            <div class="bg-light p-2 rounded text-muted">
-                                <em>{% trans "No upcoming sessions" %}</em>
-                            </div>
-                        {% endif %}
-                    </div>
-
-                    <div class="row text-center g-2 mb-3">
-                        <div class="col-4">
-                            <div class="bg-light p-2 rounded h-100">
-                                <small class="text-muted d-block" style="font-size:0.7rem;">{% trans "ATTENDANCE" %}</small>
-                                <strong class="{% if student.attendance_rate >= 80 %}text-success{% elif student.attendance_rate < 50 %}text-danger{% endif %}">{{ student.attendance_rate }}%</strong>
-                            </div>
-                        </div>
-                        <div class="col-4">
-                            <div class="bg-light p-2 rounded h-100">
-                                <small class="text-muted d-block" style="font-size:0.7rem;">{% trans "NO-SHOW" %}</small>
-                                <strong class="{% if student.no_show_rate > 20 %}text-danger{% endif %}">{{ student.no_show_rate }}%</strong>
-                            </div>
-                        </div>
-                        <div class="col-4">
-                            <div class="bg-light p-2 rounded h-100">
-                                <small class="text-muted d-block" style="font-size:0.7rem;">{% trans "REV (M)" %}</small>
-                                <strong class="text-primary">${{ student.monthly_revenue|floatformat:0 }}</strong>
-                            </div>
-                        </div>
-                    </div>
-
-                    {% if student.notes %}
-                    <div class="mt-auto">
-                        <small class="text-muted d-block mb-1">{% trans "Quick Note" %}</small>
-                        <p class="card-text text-truncate small bg-light p-2 rounded">{{ student.notes }}</p>
-                    </div>
-                    {% endif %}
-                </div>
-                <div class="card-footer bg-white border-top-0 pt-0">
-                    <a href="{% url 'scheduler:student_detail' student.pk %}" class="btn btn-outline-secondary btn-sm w-100">{% trans "View Mini OS" %} <i class="fas fa-arrow-right ms-1"></i></a>
-                </div>
-            </div>
-        </div>
-        {% empty %}
-        <div class="col-12 text-center py-5">
-            <h5 class="text-muted">{% trans "No students yet." %}</h5>
-        </div>
-        {% endfor %}
-    </div>
-</div>
-{% endblock %}

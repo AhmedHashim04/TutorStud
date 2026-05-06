@@ -19,6 +19,7 @@ urlpatterns = [
     path('students/', views.student_list, name='student_list'),
     path('students/<int:pk>/', views.student_detail, name='student_detail'),
     path('students/<int:pk>/update-notes/', views.update_student_notes, name='update_student_notes'),
+    path('students/<int:pk>/toggle-status/', views.toggle_student_status, name='toggle_student_status'),
     
     # Schedule Management (NEW)
     path('students/<int:student_id>/schedules/', views.student_schedules, name='student_schedules'),

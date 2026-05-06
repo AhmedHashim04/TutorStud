@@ -94,6 +94,39 @@ def update_student_notes(request, pk):
         messages.success(request, "Notes saved.")
     return redirect('scheduler:student_detail', pk=pk)
 
+
+def toggle_student_status(request, pk):
+    """Activate or deactivate a student."""
+    from django.http import JsonResponse
+    student = get_object_or_404(Student, pk=pk)
+    
+    if request.method == 'POST':
+        old_status = student.is_active
+        student.is_active = not student.is_active
+        student.save()
+        
+        # If inactivating, purge future sessions
+        if old_status and not student.is_active:
+            from .services import purge_future_sessions_for_inactive_student
+            purge_future_sessions_for_inactive_student(student)
+            messages.info(request, f"✓ {student.name} marked inactive. Future sessions removed.")
+        elif not old_status and student.is_active:
+            messages.success(request, f"✓ {student.name} marked active.")
+        
+        # If AJAX request, return JSON
+        if request.headers.get('X-Requested-With') == 'XMLHttpRequest':
+            return JsonResponse({
+                'status': 'success',
+                'is_active': student.is_active,
+                'message': f"{student.name} is now {'🟢 Active' if student.is_active else '🔴 Inactive'}"
+            })
+    
+    next_url = request.POST.get('next', 'scheduler:student_list')
+    if next_url.startswith('/'):
+        return redirect(next_url)
+    return redirect(next_url)
+
+
 def add_student(request):
     if request.method == 'POST':
         form = StudentForm(request.POST)
