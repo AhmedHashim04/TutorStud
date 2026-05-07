@@ -1,4 +1,4 @@
-{% load i18n %}
+{% load i18n scheduler_ui %}
 <!DOCTYPE html>
 <html lang="{{ LANGUAGE_CODE }}" dir="{% if LANGUAGE_BIDI %}rtl{% else %}ltr{% endif %}">
 <head>
@@ -211,10 +211,42 @@
         <h5 class="modal-title">{% trans "Drop Manual Session" %}</h5>
         <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
       </div>
+      {% manual_session_form as manual_session_form %}
       <form action="{% url 'scheduler:add_session' %}" method="post">
           <div class="modal-body">
               {% csrf_token %}
-              {{ session_form.as_p }}
+              {% if manual_session_form.non_field_errors %}
+                  <div class="alert alert-danger mb-3">
+                      {% for error in manual_session_form.non_field_errors %}
+                          <div>{{ error }}</div>
+                      {% endfor %}
+                  </div>
+              {% endif %}
+              <div class="mb-3">
+                  <label class="form-label" for="id_student">{% trans "Student" %}</label>
+                  {{ manual_session_form.student }}
+                  {% if manual_session_form.student.errors %}<div class="text-danger small mt-1">{{ manual_session_form.student.errors.0 }}</div>{% endif %}
+              </div>
+              <div class="mb-3">
+                  <label class="form-label" for="id_start_time">{% trans "Start time" %}</label>
+                  {{ manual_session_form.start_time }}
+                  {% if manual_session_form.start_time.errors %}<div class="text-danger small mt-1">{{ manual_session_form.start_time.errors.0 }}</div>{% endif %}
+              </div>
+              <div class="mb-3">
+                  <label class="form-label" for="id_duration">{% trans "Duration" %}</label>
+                  {{ manual_session_form.duration }}
+                  {% if manual_session_form.duration.errors %}<div class="text-danger small mt-1">{{ manual_session_form.duration.errors.0 }}</div>{% endif %}
+              </div>
+              <div class="mb-3">
+                  <label class="form-label" for="id_price">{% trans "Price" %}</label>
+                  {{ manual_session_form.price }}
+                  {% if manual_session_form.price.errors %}<div class="text-danger small mt-1">{{ manual_session_form.price.errors.0 }}</div>{% endif %}
+              </div>
+              <div class="mb-3">
+                  <label class="form-label" for="id_status">{% trans "Status" %}</label>
+                  {{ manual_session_form.status }}
+                  {% if manual_session_form.status.errors %}<div class="text-danger small mt-1">{{ manual_session_form.status.errors.0 }}</div>{% endif %}
+              </div>
           </div>
           <div class="modal-footer">
             <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Close</button>
@@ -238,6 +270,15 @@ setTimeout(() => {
         bsAlert.close();
     });
 }, 5000);
+
+{% if manual_session_form and manual_session_form.errors %}
+document.addEventListener('DOMContentLoaded', function() {
+    const modalEl = document.getElementById('addSessionModal');
+    if (modalEl) {
+        bootstrap.Modal.getOrCreateInstance(modalEl).show();
+    }
+});
+{% endif %}
 
 // Dynamic Session Defaults
 const studentDefaults = {

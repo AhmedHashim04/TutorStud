@@ -12,6 +12,17 @@ from datetime import datetime
 
 
 
+def get_manual_session_form(request):
+    """Restore the manual session form from session data after a validation failure."""
+    form_data = request.session.pop('manual_session_form_data', None)
+    form_errors = request.session.pop('manual_session_form_errors', None)
+    form = ManualSessionForm(form_data) if form_data else ManualSessionForm()
+    if form_data and form_errors:
+        for error in form_errors:
+            form.add_error(None, error)
+    return form
+
+
 def get_revenue_metrics():
     """Calculate simple revenue metrics for the dashboard."""
     today = timezone.localdate(timezone=CAIRO_TZ)
@@ -198,7 +209,7 @@ def student_detail(request, pk):
         'date_from': date_from,
         'date_to': date_to,
         'student_form': StudentForm(),
-        'session_form': ManualSessionForm(),
+        'session_form': get_manual_session_form(request),
         'students': Student.objects.filter(is_active=True),
     }
     return render(request, 'scheduler/student_detail.html', context)
@@ -301,26 +312,32 @@ def add_session(request):
             start_dt = form.cleaned_data['start_time']
             duration = form.cleaned_data['duration']
             student = form.cleaned_data['student']
-            
+
             # If price was blank, fallback to student default
             if not form.cleaned_data.get('price'):
                 form.instance.price = student.session_price
-            
+
             # If duration was blank, fallback
             if not duration:
                 duration = student.session_duration
                 form.instance.duration = duration
-                
+
             errors = validate_session(start_dt, duration, student_id=student.id)
             if not errors:
                 form.save()
                 messages.success(request, "Session added to calendar.")
             else:
-                for err in errors:
-                    messages.error(request, err)
+                request.session['manual_session_form_data'] = request.POST.dict()
+                request.session['manual_session_form_errors'] = errors
+                messages.error(request, "Please fix the highlighted session conflicts and try again.")
         else:
+            request.session['manual_session_form_data'] = request.POST.dict()
+            request.session['manual_session_form_errors'] = [
+                error for field_errors in form.errors.values() for error in field_errors
+            ]
             messages.error(request, "Invalid session data.")
-    return redirect('scheduler:dashboard')
+    next_url = request.POST.get('next') or request.META.get('HTTP_REFERER') or 'scheduler:dashboard'
+    return redirect(next_url)
 
 def update_session_status(request, pk):
     if request.method == 'POST':
