@@ -85,8 +85,10 @@ DEFAULT_AUTO_FIELD = "django.db.models.BigAutoField"
 CRISPY_ALLOWED_TEMPLATE_PACKS = "bootstrap5"
 CRISPY_TEMPLATE_PACK = "bootstrap5"
 
-PRAYER_BUFFER_START = 10
-PRAYER_BUFFER_END = 25
+# Legacy constants — prefer per-prayer configuration via GlobalSettings in the admin UI.
+# Keep as None to avoid a hardcoded default; the scheduler falls back to model default.
+PRAYER_BUFFER_START = None
+PRAYER_BUFFER_END = None
 MAKEUP_SESSION_WINDOW_DAYS = 7
 CSRF_TRUSTED_ORIGINS = [
     "https://*.replit.dev",

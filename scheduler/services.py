@@ -19,6 +19,36 @@ def ensure_aware(dt):
 def sessions_overlap(start1, end1, start2, end2):
     return start1 < end2 and start2 < end1
 
+
+def get_prayer_protected_period(prayer_obj, settings_obj=None):
+    """Return (protected_start_dt, protected_end_dt) for a given PrayerTime object.
+
+    - protected_start = adhan_time + configured_iqama_delay (minutes)
+    - protected_end = protected_start + prayer_obj.duration (minutes)
+
+    Both datetimes are timezone-aware in CAIRO_TZ.
+    """
+    from .models import GlobalSettings
+    d = prayer_obj.date
+    settings_obj = settings_obj or GlobalSettings.load()
+    # Determine delay for this prayer (fallback handled by model)
+    delay = settings_obj.get_iqama_delay(prayer_obj.prayer)
+
+    prayer_start = CAIRO_TZ.localize(datetime.combine(d, prayer_obj.adhan_time)) + timedelta(minutes=delay)
+    # Determine post-iqama block duration: prefer GlobalSettings per-prayer post-block, fallback to PrayerTime.duration, then default
+    post_block = None
+    try:
+        post_block = settings_obj.get_post_block_duration(prayer_obj.prayer)
+    except Exception:
+        post_block = None
+
+    if post_block is None:
+        # fallback to prayer object's duration (legacy)
+        post_block = getattr(prayer_obj, 'duration', None) or 15
+
+    prayer_end = prayer_start + timedelta(minutes=post_block)
+    return prayer_start, prayer_end
+
 def validate_session(start_time, duration_minutes, exclude_session_id=None, student_id=None):
     """
     Validate if a session slot is available.
@@ -31,16 +61,13 @@ def validate_session(start_time, duration_minutes, exclude_session_id=None, stud
     
     d = to_cairo(start_time).date()
     settings = GlobalSettings.load()
-    buffer_mins = settings.prayer_buffer_minutes
 
-    # 1. Prayer Time Overlap Check
+    # 1. Prayer Time Overlap Check (use per-prayer iqama delay)
     prayers = PrayerTime.objects.filter(date=d)
     for p in prayers:
-        # Prayer window starts at adhan + buffer, and lasts for p.duration minutes
-        prayer_start = CAIRO_TZ.localize(datetime.combine(d, p.adhan_time)) + timedelta(minutes=buffer_mins)
-        prayer_end = prayer_start + timedelta(minutes=p.duration)
+        prayer_start, prayer_end = get_prayer_protected_period(p, settings)
         if sessions_overlap(start_time, end_time, prayer_start, prayer_end):
-            errors.append(f"Overlaps with {p.get_prayer_display()} prayer block (Starts {prayer_start.strftime('%H:%M')}).")
+            errors.append(f"Overlaps with {p.get_prayer_display()} prayer block (Protected from {prayer_start.strftime('%H:%M')}).")
 
     # 2. Existing Session Overlap Check
     conflicting_sessions = Session.objects.filter(
@@ -336,13 +363,18 @@ def fetch_cairo_prayer_times(target_date, method=5):
     timings = payload.get('data', {}).get('timings', {})
 
     created_count = 0
+    from .models import GlobalSettings
+    settings_obj = GlobalSettings.load()
+
     for field_name, api_name in PRAYER_TIME_FIELD_MAP.items():
         adhan_t = _parse_api_time(timings.get(api_name))
         if adhan_t:
+            # Use configured post-block duration as the stored duration for display/legacy compatibility
+            post_block = settings_obj.get_post_block_duration(field_name)
             obj, created = PrayerTime.objects.update_or_create(
                 date=target_date,
                 prayer=field_name,
-                defaults={'adhan_time': adhan_t, 'duration': 30} # Default block duration
+                defaults={'adhan_time': adhan_t, 'duration': post_block}
             )
             if created:
                 created_count += 1

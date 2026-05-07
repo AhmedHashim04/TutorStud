@@ -50,7 +50,16 @@ COUNTRY_CHOICES = [
 class GlobalSettings(models.Model):
     """Singleton model for global application settings."""
     default_session_price = models.DecimalField(max_digits=10, decimal_places=2, default=Decimal('200'))
-    prayer_buffer_minutes = models.IntegerField(default=10, help_text=_("Buffer time after Adhan to block scheduling"))
+    # Per-prayer iqama delay (minutes). If not customized, use DEFAULT_IQAMA_DELAY.
+    DEFAULT_IQAMA_DELAY = 10
+
+    prayer_buffer_minutes = models.IntegerField(default=10, help_text=_("Legacy single buffer time after Adhan (deprecated)"))
+
+    fajr_iqama_delay = models.IntegerField(default=DEFAULT_IQAMA_DELAY, help_text=_('Iqama delay for Fajr in minutes (e.g. 20)'))
+    dhuhr_iqama_delay = models.IntegerField(default=DEFAULT_IQAMA_DELAY, help_text=_('Iqama delay for Dhuhr in minutes (e.g. 10)'))
+    asr_iqama_delay = models.IntegerField(default=DEFAULT_IQAMA_DELAY, help_text=_('Iqama delay for Asr in minutes (e.g. 15)'))
+    maghrib_iqama_delay = models.IntegerField(default=DEFAULT_IQAMA_DELAY, help_text=_('Iqama delay for Maghrib in minutes (e.g. 5)'))
+    isha_iqama_delay = models.IntegerField(default=DEFAULT_IQAMA_DELAY, help_text=_('Iqama delay for Isha in minutes (e.g. 10)'))
     
     class Meta:
         verbose_name_plural = "Global Settings"
@@ -69,6 +78,40 @@ class GlobalSettings(models.Model):
 
     def __str__(self):
         return "Global System Settings"
+
+    def get_iqama_delay(self, prayer_key):
+        """Return configured iqama delay (minutes) for a given prayer key (e.g. 'fajr').
+
+        Falls back to DEFAULT_IQAMA_DELAY when not set.
+        """
+        attr = f"{prayer_key}_iqama_delay"
+        val = getattr(self, attr, None)
+        try:
+            if val is None:
+                return int(self.DEFAULT_IQAMA_DELAY)
+            return int(val)
+        except Exception:
+            return int(self.DEFAULT_IQAMA_DELAY)
+
+    # Post-iqama block default (minutes)
+    DEFAULT_POST_BLOCK = 15
+
+    fajr_post_block = models.IntegerField(default=DEFAULT_POST_BLOCK, help_text=_('Post-iqama blocking duration for Fajr in minutes'))
+    dhuhr_post_block = models.IntegerField(default=DEFAULT_POST_BLOCK, help_text=_('Post-iqama blocking duration for Dhuhr in minutes'))
+    asr_post_block = models.IntegerField(default=DEFAULT_POST_BLOCK, help_text=_('Post-iqama blocking duration for Asr in minutes'))
+    maghrib_post_block = models.IntegerField(default=DEFAULT_POST_BLOCK, help_text=_('Post-iqama blocking duration for Maghrib in minutes'))
+    isha_post_block = models.IntegerField(default=DEFAULT_POST_BLOCK, help_text=_('Post-iqama blocking duration for Isha in minutes'))
+
+    def get_post_block_duration(self, prayer_key):
+        """Return configured post-iqama blocking duration (minutes) for a given prayer."""
+        attr = f"{prayer_key}_post_block"
+        val = getattr(self, attr, None)
+        try:
+            if val is None:
+                return int(self.DEFAULT_POST_BLOCK)
+            return int(val)
+        except Exception:
+            return int(self.DEFAULT_POST_BLOCK)
 
 class SessionDurationOption(models.Model):
     """Configurable options for session duration."""

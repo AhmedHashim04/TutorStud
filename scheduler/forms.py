@@ -184,12 +184,80 @@ class SessionStatusForm(forms.ModelForm):
 
 
 class GlobalSettingsForm(forms.ModelForm):
+    fajr_iqama_delay = forms.IntegerField(min_value=0, max_value=240, required=False,
+        label=_('Fajr iqama delay (minutes)'),
+        help_text=_('Delay after adhan before iqama/protected period starts.'))
+    dhuhr_iqama_delay = forms.IntegerField(min_value=0, max_value=240, required=False,
+        label=_('Dhuhr iqama delay (minutes)'),
+        help_text=_('Delay after adhan before iqama/protected period starts.'))
+    asr_iqama_delay = forms.IntegerField(min_value=0, max_value=240, required=False,
+        label=_('Asr iqama delay (minutes)'),
+        help_text=_('Delay after adhan before iqama/protected period starts.'))
+    maghrib_iqama_delay = forms.IntegerField(min_value=0, max_value=240, required=False,
+        label=_('Maghrib iqama delay (minutes)'),
+        help_text=_('Delay after adhan before iqama/protected period starts.'))
+    isha_iqama_delay = forms.IntegerField(min_value=0, max_value=240, required=False,
+        label=_('Isha iqama delay (minutes)'),
+        help_text=_('Delay after adhan before iqama/protected period starts.'))
+    # Post-iqama block durations
+    fajr_post_block = forms.IntegerField(min_value=0, max_value=480, required=False,
+        label=_('Fajr post-block (minutes)'),
+        help_text=_('Duration after iqama that remains blocked.'))
+    dhuhr_post_block = forms.IntegerField(min_value=0, max_value=480, required=False,
+        label=_('Dhuhr post-block (minutes)'),
+        help_text=_('Duration after iqama that remains blocked.'))
+    asr_post_block = forms.IntegerField(min_value=0, max_value=480, required=False,
+        label=_('Asr post-block (minutes)'),
+        help_text=_('Duration after iqama that remains blocked.'))
+    maghrib_post_block = forms.IntegerField(min_value=0, max_value=480, required=False,
+        label=_('Maghrib post-block (minutes)'),
+        help_text=_('Duration after iqama that remains blocked.'))
+    isha_post_block = forms.IntegerField(min_value=0, max_value=480, required=False,
+        label=_('Isha post-block (minutes)'),
+        help_text=_('Duration after iqama that remains blocked.'))
+
     class Meta:
         model = GlobalSettings
-        fields = ['default_session_price']
+        fields = ['default_session_price', 'fajr_iqama_delay', 'dhuhr_iqama_delay', 'asr_iqama_delay', 'maghrib_iqama_delay', 'isha_iqama_delay']
         widgets = {
             'default_session_price': forms.NumberInput(attrs={'class': 'form-control'})
         }
+
+    def __init__(self, *args, **kwargs):
+        super().__init__(*args, **kwargs)
+        common_input_class = 'form-control'
+        for field_name in [
+            'fajr_iqama_delay', 'dhuhr_iqama_delay', 'asr_iqama_delay',
+            'maghrib_iqama_delay', 'isha_iqama_delay',
+            'fajr_post_block', 'dhuhr_post_block', 'asr_post_block',
+            'maghrib_post_block', 'isha_post_block',
+        ]:
+            self.fields[field_name].widget.attrs.update({
+                'class': common_input_class,
+                'min': 0,
+                'step': 1,
+                'placeholder': '10',
+            })
+        self.fields['default_session_price'].widget.attrs.update({'class': 'form-control'})
+
+    def clean(self):
+        cleaned = super().clean()
+        # Ensure sensible defaults and non-negative integers
+        for key in ['fajr_iqama_delay','dhuhr_iqama_delay','asr_iqama_delay','maghrib_iqama_delay','isha_iqama_delay']:
+            val = cleaned.get(key)
+            if val is None:
+                # Leave None to let model default apply on save
+                continue
+            if val < 0:
+                self.add_error(key, _('Delay must be zero or positive minutes.'))
+        # Validate post-block fields
+        for key in ['fajr_post_block','dhuhr_post_block','asr_post_block','maghrib_post_block','isha_post_block']:
+            val = cleaned.get(key)
+            if val is None:
+                continue
+            if val < 0:
+                self.add_error(key, _('Block duration must be zero or positive minutes.'))
+        return cleaned
 
 
 class PrayerTimeForm(forms.ModelForm):
