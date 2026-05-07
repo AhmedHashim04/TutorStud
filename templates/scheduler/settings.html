@@ -3,181 +3,207 @@
 
 {% block page_title %}{% trans "Global Settings" %}{% endblock %}
 
+{% block extra_css %}
+<style>
+    .settings-page { position: relative; }
+    .settings-hero {
+        background:
+            radial-gradient(circle at top right, rgba(99, 102, 241, 0.16), transparent 32%),
+            linear-gradient(135deg, #ffffff 0%, #f8fbff 100%);
+        border: 1px solid rgba(226, 232, 240, 0.9);
+        border-radius: 24px;
+        box-shadow: 0 18px 40px rgba(15, 23, 42, 0.06);
+        overflow: hidden;
+    }
+    .settings-kicker { letter-spacing: .12em; text-transform: uppercase; font-size: 11px; font-weight: 800; color: var(--primary); }
+    .settings-title { font-size: clamp(1.6rem, 2.3vw, 2.35rem); font-weight: 800; line-height: 1.1; margin: 0; }
+    .settings-subtitle { color: var(--text-muted); max-width: 58ch; margin: .55rem 0 0; }
+    .settings-metrics { display: flex; flex-wrap: wrap; gap: 10px; margin-top: 1rem; }
+    .settings-pill {
+        display: inline-flex; align-items: center; gap: 8px; border-radius: 999px;
+        padding: 8px 12px; background: rgba(255, 255, 255, 0.72);
+        border: 1px solid rgba(226, 232, 240, 0.9); color: var(--text);
+        font-size: 13px; font-weight: 600; backdrop-filter: blur(8px);
+    }
+    .section-card {
+        border: 1px solid rgba(226, 232, 240, 0.92); border-radius: 22px;
+        box-shadow: 0 14px 35px rgba(15, 23, 42, 0.06); overflow: hidden;
+    }
+    .section-card .card-header {
+        background: linear-gradient(180deg, rgba(248, 250, 252, 0.96), rgba(255, 255, 255, 1));
+        border-bottom: 1px solid rgba(226, 232, 240, 0.9); padding: 18px 20px;
+    }
+    .section-card .card-body { padding: 20px; }
+    .prayer-card {
+        background: linear-gradient(180deg, #ffffff 0%, #fbfdff 100%);
+        border: 1px solid rgba(226, 232, 240, 0.95); border-radius: 18px;
+        box-shadow: 0 8px 20px rgba(15, 23, 42, 0.04); height: 100%; overflow: hidden;
+    }
+    .prayer-card-head { display: flex; justify-content: space-between; align-items: flex-start; gap: 14px; margin-bottom: 16px; }
+    .prayer-name { font-size: 15px; font-weight: 800; margin: 0; }
+    .prayer-note { color: var(--text-muted); font-size: 12px; margin-top: 3px; }
+    .prayer-badge {
+        border-radius: 999px; padding: 6px 10px; background: var(--primary-light);
+        color: var(--primary-dark); font-size: 11px; font-weight: 700; white-space: nowrap;
+    }
+    .field-block { background: #f8fafc; border: 1px solid rgba(226, 232, 240, 0.85); border-radius: 14px; padding: 12px; }
+    .field-label {
+        display: flex; justify-content: space-between; align-items: center; margin-bottom: 8px;
+        font-size: 12px; font-weight: 700; color: var(--text-muted); text-transform: uppercase; letter-spacing: .04em;
+    }
+    .field-suffix {
+        font-size: 11px; color: var(--text-muted); font-weight: 700; background: #fff;
+        border: 1px solid rgba(226, 232, 240, 0.95); border-radius: 999px; padding: 3px 8px;
+    }
+    .engine-row { border-bottom: 1px solid rgba(226, 232, 240, 0.9); padding: 14px 16px; }
+    .engine-row:last-child { border-bottom: 0; }
+    .engine-row:hover { background: #f8fafc; }
+    .engine-day { font-weight: 800; font-size: 14px; color: var(--text); }
+    .engine-meta { display: flex; flex-wrap: wrap; gap: 8px; margin-top: 4px; }
+    .engine-chip {
+        display: inline-flex; align-items: center; gap: 6px; border-radius: 999px; padding: 5px 9px;
+        background: #eef2ff; color: #4338ca; font-size: 11px; font-weight: 700;
+    }
+</style>
+{% endblock %}
+
 {% block content %}
-<div class="container-fluid py-4">
-    <div class="row">
-        <!-- System Defaults -->
-        <div class="col-md-6 mb-4">
-            <div class="card shadow-sm h-100">
-                <div class="card-header bg-white">
-                    <h5 class="mb-0">{% trans "System Defaults" %}</h5>
+<div class="container-fluid py-4 settings-page">
+    <div class="settings-hero p-4 p-lg-5 mb-4">
+        <div class="row align-items-end g-4">
+            <div class="col-lg-8">
+                <div class="settings-kicker mb-2">{% trans "Global Controls" %}</div>
+                <h1 class="settings-title">{% trans "Prayer and system settings in one clean control surface" %}</h1>
+                <p class="settings-subtitle">{% trans "Tune the tutor defaults, prayer iqama delays, and protected post-iqama windows from a single organized place." %}</p>
+                <div class="settings-metrics">
+                    <span class="settings-pill"><i class="fas fa-coins text-primary"></i> {% trans "Default pricing" %}</span>
+                    <span class="settings-pill"><i class="fas fa-mosque text-primary"></i> {% trans "Per-prayer iqama" %}</span>
+                    <span class="settings-pill"><i class="fas fa-shield-alt text-primary"></i> {% trans "Protected windows" %}</span>
+                </div>
+            </div>
+            <div class="col-lg-4 text-lg-end">
+                <div class="settings-pill justify-content-center justify-content-lg-end mb-2">
+                    <i class="fas fa-sparkles text-primary"></i>
+                    {% trans "Consistent with dashboard style" %}
+                </div>
+                <p class="settings-subtitle ms-lg-auto mb-0">{% trans "Responsive, compact, and easy to scan on mobile or desktop." %}</p>
+            </div>
+        </div>
+    </div>
+
+    <div class="row g-4">
+        <div class="col-12 col-xl-7">
+            <div class="card section-card h-100">
+                <div class="card-header d-flex flex-column flex-sm-row justify-content-between align-items-start align-items-sm-center gap-2">
+                    <div>
+                        <div class="text-uppercase small fw-bold text-primary mb-1">{% trans "System Defaults" %}</div>
+                        <h5 class="mb-0">{% trans "Tutor baseline settings" %}</h5>
+                    </div>
+                    <span class="badge bg-light text-dark border rounded-pill px-3 py-2">{% trans "Saved live from database" %}</span>
                 </div>
                 <div class="card-body">
                     <form action="{% url 'scheduler:settings' %}" method="post">
                         {% csrf_token %}
                         <div class="row g-3">
-                            <div class="col-12">
-                                <label class="form-label">{% trans "Default session price" %}</label>
-                                {{ form.default_session_price }}
+                            <div class="col-12 col-lg-4">
+                                <div class="field-block h-100">
+                                    <div class="field-label">
+                                        <span>{% trans "Default session price" %}</span>
+                                        <span class="field-suffix">{% trans "currency" %}</span>
+                                    </div>
+                                    {{ form.default_session_price }}
+                                    <small class="text-muted d-block mt-2">{% trans "Used when a new student is created." %}</small>
+                                </div>
                             </div>
 
-                            <div class="col-12 mt-2">
-                                <h6 class="mb-2">{% trans "Prayer Iqama & Post-Block" %}</h6>
-                                <small class="text-muted d-block mb-2">{% trans "Configure how long after Adhan the iqama starts and how long the protected block lasts after iqama." %}</small>
-                            </div>
-
-                            <div class="col-12">
-                                <div class="row g-3">
-                                    <div class="col-12 col-lg-6">
-                                        <div class="card border-0 shadow-sm h-100">
-                                            <div class="card-body p-3">
-                                                <div class="d-flex justify-content-between align-items-start mb-3">
+                            <div class="col-12 col-lg-8">
+                                <div class="field-block h-100">
+                                    <div class="d-flex justify-content-between align-items-start gap-2 mb-2">
+                                        <div>
+                                            <div class="field-label mb-1" style="margin-bottom: 4px;">
+                                                <span>{% trans "Prayer timing controls" %}</span>
+                                                <span class="field-suffix">{% trans "minutes" %}</span>
+                                            </div>
+                                            <small class="text-muted">{% trans "Each prayer has its own iqama delay and post-iqama block." %}</small>
+                                        </div>
+                                    </div>
+                                    <div class="row g-3 mt-1">
+                                        <div class="col-12 col-md-6">
+                                            <div class="prayer-card p-3">
+                                                <div class="prayer-card-head">
                                                     <div>
-                                                        <div class="fw-semibold">{% trans "Fajr" %}</div>
-                                                        <small class="text-muted">{% trans "Iqama delay and protected block" %}</small>
-                                                        <small class="text-muted d-block">{% trans "Current" %}: {{ form.fajr_iqama_delay.value|default_if_none:"" }} min + {{ form.fajr_post_block.value|default_if_none:"" }} min</small>
+                                                        <div class="prayer-name">{% trans "Fajr" %}</div>
+                                                        <div class="prayer-note">{% trans "Early morning window" %}</div>
                                                     </div>
-                                                    <span class="badge bg-light text-dark border">{% trans "Minutes" %}</span>
+                                                    <span class="prayer-badge">{% trans "Live" %}</span>
                                                 </div>
                                                 <div class="row g-2">
-                                                    <div class="col-6">
-                                                        <label class="form-label small text-muted mb-1">{% trans "Iqama delay" %}</label>
-                                                        <div class="input-group input-group-sm">
-                                                            {{ form.fajr_iqama_delay }}
-                                                            <span class="input-group-text">min</span>
-                                                        </div>
-                                                    </div>
-                                                    <div class="col-6">
-                                                        <label class="form-label small text-muted mb-1">{% trans "Post-block" %}</label>
-                                                        <div class="input-group input-group-sm">
-                                                            {{ form.fajr_post_block }}
-                                                            <span class="input-group-text">min</span>
-                                                        </div>
-                                                    </div>
+                                                    <div class="col-6"><div class="field-block p-2"><div class="field-label"><span>{% trans "Iqama" %}</span><span class="field-suffix">min</span></div>{{ form.fajr_iqama_delay }}</div></div>
+                                                    <div class="col-6"><div class="field-block p-2"><div class="field-label"><span>{% trans "Post-block" %}</span><span class="field-suffix">min</span></div>{{ form.fajr_post_block }}</div></div>
                                                 </div>
                                             </div>
                                         </div>
-                                    </div>
 
-                                    <div class="col-12 col-lg-6">
-                                        <div class="card border-0 shadow-sm h-100">
-                                            <div class="card-body p-3">
-                                                <div class="d-flex justify-content-between align-items-start mb-3">
+                                        <div class="col-12 col-md-6">
+                                            <div class="prayer-card p-3">
+                                                <div class="prayer-card-head">
                                                     <div>
-                                                        <div class="fw-semibold">{% trans "Dhuhr" %}</div>
-                                                        <small class="text-muted">{% trans "Iqama delay and protected block" %}</small>
-                                                        <small class="text-muted d-block">{% trans "Current" %}: {{ form.dhuhr_iqama_delay.value|default_if_none:"" }} min + {{ form.dhuhr_post_block.value|default_if_none:"" }} min</small>
+                                                        <div class="prayer-name">{% trans "Dhuhr" %}</div>
+                                                        <div class="prayer-note">{% trans "Midday prayer window" %}</div>
                                                     </div>
-                                                    <span class="badge bg-light text-dark border">{% trans "Minutes" %}</span>
+                                                    <span class="prayer-badge">{% trans "Live" %}</span>
                                                 </div>
                                                 <div class="row g-2">
-                                                    <div class="col-6">
-                                                        <label class="form-label small text-muted mb-1">{% trans "Iqama delay" %}</label>
-                                                        <div class="input-group input-group-sm">
-                                                            {{ form.dhuhr_iqama_delay }}
-                                                            <span class="input-group-text">min</span>
-                                                        </div>
-                                                    </div>
-                                                    <div class="col-6">
-                                                        <label class="form-label small text-muted mb-1">{% trans "Post-block" %}</label>
-                                                        <div class="input-group input-group-sm">
-                                                            {{ form.dhuhr_post_block }}
-                                                            <span class="input-group-text">min</span>
-                                                        </div>
-                                                    </div>
+                                                    <div class="col-6"><div class="field-block p-2"><div class="field-label"><span>{% trans "Iqama" %}</span><span class="field-suffix">min</span></div>{{ form.dhuhr_iqama_delay }}</div></div>
+                                                    <div class="col-6"><div class="field-block p-2"><div class="field-label"><span>{% trans "Post-block" %}</span><span class="field-suffix">min</span></div>{{ form.dhuhr_post_block }}</div></div>
                                                 </div>
                                             </div>
                                         </div>
-                                    </div>
 
-                                    <div class="col-12 col-lg-6">
-                                        <div class="card border-0 shadow-sm h-100">
-                                            <div class="card-body p-3">
-                                                <div class="d-flex justify-content-between align-items-start mb-3">
+                                        <div class="col-12 col-md-6">
+                                            <div class="prayer-card p-3">
+                                                <div class="prayer-card-head">
                                                     <div>
-                                                        <div class="fw-semibold">{% trans "Asr" %}</div>
-                                                        <small class="text-muted">{% trans "Iqama delay and protected block" %}</small>
-                                                        <small class="text-muted d-block">{% trans "Current" %}: {{ form.asr_iqama_delay.value|default_if_none:"" }} min + {{ form.asr_post_block.value|default_if_none:"" }} min</small>
+                                                        <div class="prayer-name">{% trans "Asr" %}</div>
+                                                        <div class="prayer-note">{% trans "Afternoon prayer window" %}</div>
                                                     </div>
-                                                    <span class="badge bg-light text-dark border">{% trans "Minutes" %}</span>
+                                                    <span class="prayer-badge">{% trans "Live" %}</span>
                                                 </div>
                                                 <div class="row g-2">
-                                                    <div class="col-6">
-                                                        <label class="form-label small text-muted mb-1">{% trans "Iqama delay" %}</label>
-                                                        <div class="input-group input-group-sm">
-                                                            {{ form.asr_iqama_delay }}
-                                                            <span class="input-group-text">min</span>
-                                                        </div>
-                                                    </div>
-                                                    <div class="col-6">
-                                                        <label class="form-label small text-muted mb-1">{% trans "Post-block" %}</label>
-                                                        <div class="input-group input-group-sm">
-                                                            {{ form.asr_post_block }}
-                                                            <span class="input-group-text">min</span>
-                                                        </div>
-                                                    </div>
+                                                    <div class="col-6"><div class="field-block p-2"><div class="field-label"><span>{% trans "Iqama" %}</span><span class="field-suffix">min</span></div>{{ form.asr_iqama_delay }}</div></div>
+                                                    <div class="col-6"><div class="field-block p-2"><div class="field-label"><span>{% trans "Post-block" %}</span><span class="field-suffix">min</span></div>{{ form.asr_post_block }}</div></div>
                                                 </div>
                                             </div>
                                         </div>
-                                    </div>
 
-                                    <div class="col-12 col-lg-6">
-                                        <div class="card border-0 shadow-sm h-100">
-                                            <div class="card-body p-3">
-                                                <div class="d-flex justify-content-between align-items-start mb-3">
+                                        <div class="col-12 col-md-6">
+                                            <div class="prayer-card p-3">
+                                                <div class="prayer-card-head">
                                                     <div>
-                                                        <div class="fw-semibold">{% trans "Maghrib" %}</div>
-                                                        <small class="text-muted">{% trans "Iqama delay and protected block" %}</small>
-                                                        <small class="text-muted d-block">{% trans "Current" %}: {{ form.maghrib_iqama_delay.value|default_if_none:"" }} min + {{ form.maghrib_post_block.value|default_if_none:"" }} min</small>
+                                                        <div class="prayer-name">{% trans "Maghrib" %}</div>
+                                                        <div class="prayer-note">{% trans "Sunset prayer window" %}</div>
                                                     </div>
-                                                    <span class="badge bg-light text-dark border">{% trans "Minutes" %}</span>
+                                                    <span class="prayer-badge">{% trans "Live" %}</span>
                                                 </div>
                                                 <div class="row g-2">
-                                                    <div class="col-6">
-                                                        <label class="form-label small text-muted mb-1">{% trans "Iqama delay" %}</label>
-                                                        <div class="input-group input-group-sm">
-                                                            {{ form.maghrib_iqama_delay }}
-                                                            <span class="input-group-text">min</span>
-                                                        </div>
-                                                    </div>
-                                                    <div class="col-6">
-                                                        <label class="form-label small text-muted mb-1">{% trans "Post-block" %}</label>
-                                                        <div class="input-group input-group-sm">
-                                                            {{ form.maghrib_post_block }}
-                                                            <span class="input-group-text">min</span>
-                                                        </div>
-                                                    </div>
+                                                    <div class="col-6"><div class="field-block p-2"><div class="field-label"><span>{% trans "Iqama" %}</span><span class="field-suffix">min</span></div>{{ form.maghrib_iqama_delay }}</div></div>
+                                                    <div class="col-6"><div class="field-block p-2"><div class="field-label"><span>{% trans "Post-block" %}</span><span class="field-suffix">min</span></div>{{ form.maghrib_post_block }}</div></div>
                                                 </div>
                                             </div>
                                         </div>
-                                    </div>
 
-                                    <div class="col-12 col-lg-6">
-                                        <div class="card border-0 shadow-sm h-100">
-                                            <div class="card-body p-3">
-                                                <div class="d-flex justify-content-between align-items-start mb-3">
+                                        <div class="col-12 col-md-6">
+                                            <div class="prayer-card p-3">
+                                                <div class="prayer-card-head">
                                                     <div>
-                                                        <div class="fw-semibold">{% trans "Isha" %}</div>
-                                                        <small class="text-muted">{% trans "Iqama delay and protected block" %}</small>
-                                                        <small class="text-muted d-block">{% trans "Current" %}: {{ form.isha_iqama_delay.value|default_if_none:"" }} min + {{ form.isha_post_block.value|default_if_none:"" }} min</small>
+                                                        <div class="prayer-name">{% trans "Isha" %}</div>
+                                                        <div class="prayer-note">{% trans "Night prayer window" %}</div>
                                                     </div>
-                                                    <span class="badge bg-light text-dark border">{% trans "Minutes" %}</span>
+                                                    <span class="prayer-badge">{% trans "Live" %}</span>
                                                 </div>
                                                 <div class="row g-2">
-                                                    <div class="col-6">
-                                                        <label class="form-label small text-muted mb-1">{% trans "Iqama delay" %}</label>
-                                                        <div class="input-group input-group-sm">
-                                                            {{ form.isha_iqama_delay }}
-                                                            <span class="input-group-text">min</span>
-                                                        </div>
-                                                    </div>
-                                                    <div class="col-6">
-                                                        <label class="form-label small text-muted mb-1">{% trans "Post-block" %}</label>
-                                                        <div class="input-group input-group-sm">
-                                                            {{ form.isha_post_block }}
-                                                            <span class="input-group-text">min</span>
-                                                        </div>
-                                                    </div>
+                                                    <div class="col-6"><div class="field-block p-2"><div class="field-label"><span>{% trans "Iqama" %}</span><span class="field-suffix">min</span></div>{{ form.isha_iqama_delay }}</div></div>
+                                                    <div class="col-6"><div class="field-block p-2"><div class="field-label"><span>{% trans "Post-block" %}</span><span class="field-suffix">min</span></div>{{ form.isha_post_block }}</div></div>
                                                 </div>
                                             </div>
                                         </div>
@@ -185,8 +211,10 @@
                                 </div>
                             </div>
 
-                            <div class="col-12">
-                                <button type="submit" class="btn btn-primary mt-3">{% trans "Save Settings" %}</button>
+                            <div class="col-12 d-flex justify-content-end">
+                                <button type="submit" class="btn btn-primary px-4 py-2 rounded-pill shadow-sm">
+                                    <i class="fas fa-save me-2"></i>{% trans "Save Settings" %}
+                                </button>
                             </div>
                         </div>
                     </form>
@@ -194,47 +222,56 @@
             </div>
         </div>
 
-        <!-- Prayer Times Engine -->
-        <div class="col-md-6 mb-4">
-            <div class="card shadow-sm h-100">
-                <div class="card-header bg-white d-flex justify-content-between align-items-center">
-                    <h5 class="mb-0">{% trans "Prayer Blocking Engine" %}</h5>
+        <div class="col-12 col-xl-5">
+            <div class="card section-card h-100">
+                <div class="card-header d-flex flex-column flex-sm-row justify-content-between align-items-start align-items-sm-center gap-2">
+                    <div>
+                        <div class="text-uppercase small fw-bold text-primary mb-1">{% trans "Prayer Blocking Engine" %}</div>
+                        <h5 class="mb-0">{% trans "Live protected windows" %}</h5>
+                    </div>
                     <form action="{% url 'scheduler:fetch_prayers' %}" method="post" class="m-0">
                         {% csrf_token %}
-                        <button type="submit" class="btn btn-sm btn-outline-success">
-                            <i class="fas fa-cloud-download-alt me-1"></i> Fetch Next 7 Days (Cairo)
+                        <button type="submit" class="btn btn-sm btn-outline-success rounded-pill px-3">
+                            <i class="fas fa-cloud-download-alt me-1"></i> {% trans "Fetch next 7 days" %}
                         </button>
                     </form>
                 </div>
                 <div class="card-body p-0">
-                    <div class="p-3 bg-light border-bottom">
+                    <div class="p-3 px-4 bg-light border-bottom">
                         <small class="text-muted d-block">
                             <i class="fas fa-info-circle me-1"></i>
-                                {% trans "The system automatically prevents scheduling during each prayer's protected window using your iqama and post-block settings." %}
+                            {% trans "Scheduling is blocked only during the configured post-iqama window for each prayer." %}
                         </small>
                     </div>
-                            {% if prayers %}
-                        <div class="list-group list-group-flush" style="max-height: 400px; overflow-y: auto;">
-                            {% regroup prayers by date as date_list %}
+                    {% if prayers %}
+                        <div style="max-height: 720px; overflow-y: auto;">
+                            {% regroup prayers by obj.date as date_list %}
                             {% for date_group in date_list %}
-                                <div class="list-group-item bg-light text-muted fw-bold py-1 px-3">
-                                    {{ date_group.grouper|date:"D, M j" }}
+                                <div class="engine-row bg-light">
+                                    <div class="engine-day">{{ date_group.grouper|date:"D, M j" }}</div>
                                 </div>
                                 {% for p in date_group.list %}
-                                <div class="list-group-item d-flex justify-content-between align-items-center px-3 py-2">
-                                    <div>
-                                        <strong>{{ p.obj.get_prayer_display }}</strong>
-                                        <small class="text-muted ms-2">{{ p.obj.adhan_time|time:"g:i A" }}</small>
+                                <div class="engine-row">
+                                    <div class="d-flex justify-content-between align-items-start gap-3">
+                                        <div>
+                                            <div class="fw-bold">{{ p.obj.get_prayer_display }}</div>
+                                            <div class="text-muted small">{{ p.obj.adhan_time|time:"g:i A" }}</div>
+                                            <div class="engine-meta">
+                                                <span class="engine-chip"><i class="fas fa-clock"></i> {% trans "Iqama" %} +{{ p.iqama_delay }}m</span>
+                                                <span class="engine-chip"><i class="fas fa-shield-alt"></i> {% trans "Blocks" %} {{ p.block_minutes }}m</span>
+                                            </div>
+                                        </div>
+                                        <span class="badge bg-secondary-subtle text-secondary-emphasis rounded-pill px-3 py-2">{{ p.block_minutes }}m</span>
                                     </div>
-                                    <span class="badge bg-secondary opacity-75">Blocks {{ p.block_minutes }}m</span>
                                 </div>
                                 {% endfor %}
                             {% endfor %}
                         </div>
                     {% else %}
                         <div class="p-4 text-center text-muted">
-                            <p class="mb-0">No prayer times fetched yet.</p>
-                            <small>Click fetch to pull data for Cairo.</small>
+                            <div class="mb-3"><i class="fas fa-moon fa-2x text-primary opacity-75"></i></div>
+                            <p class="mb-1 fw-semibold">{% trans "No prayer times fetched yet." %}</p>
+                            <small>{% trans "Fetch data to preview the active protected windows." %}</small>
                         </div>
                     {% endif %}
                 </div>
