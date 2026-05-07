@@ -49,6 +49,12 @@ def get_prayer_protected_period(prayer_obj, settings_obj=None):
     prayer_end = prayer_start + timedelta(minutes=post_block)
     return prayer_start, prayer_end
 
+
+def get_prayer_block_minutes(prayer_obj, settings_obj=None):
+    """Return the current configured protected duration in minutes for a prayer."""
+    start_dt, end_dt = get_prayer_protected_period(prayer_obj, settings_obj=settings_obj)
+    return max(0, int((end_dt - start_dt).total_seconds() // 60))
+
 def validate_session(start_time, duration_minutes, exclude_session_id=None, student_id=None):
     """
     Validate if a session slot is available.

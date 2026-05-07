@@ -7,7 +7,7 @@ from django.core.paginator import Paginator
 from datetime import timedelta
 from .models import Session, Student, RecurringSchedule, GlobalSettings, PrayerTime, COUNTRY_CHOICES
 from .forms import StudentForm, ManualSessionForm, GlobalSettingsForm, SessionRescheduleForm
-from .services import generate_sessions_for_student, generate_sessions_for_all_active_students, sync_future_sessions_for_student, CAIRO_TZ, fetch_cairo_prayer_times
+from .services import generate_sessions_for_student, generate_sessions_for_all_active_students, sync_future_sessions_for_student, CAIRO_TZ, fetch_cairo_prayer_times, get_prayer_block_minutes
 from datetime import datetime
 
 
@@ -401,11 +401,19 @@ def settings_view(request):
         form = GlobalSettingsForm(instance=settings_obj)
     
     today = timezone.localdate(timezone=CAIRO_TZ)
-    prayers = PrayerTime.objects.filter(date__gte=today, date__lte=today + timedelta(days=6)).order_by('date', 'adhan_time')
+    prayer_qs = PrayerTime.objects.filter(date__gte=today, date__lte=today + timedelta(days=6)).order_by('date', 'adhan_time')
+    prayers = []
+    for prayer in prayer_qs:
+        prayers.append({
+            'obj': prayer,
+            'block_minutes': get_prayer_block_minutes(prayer, settings_obj=settings_obj),
+            'iqama_delay': settings_obj.get_iqama_delay(prayer.prayer),
+        })
     
     return render(request, 'scheduler/settings.html', {
         'form': form, 
         'prayers': prayers,
+        'settings_obj': settings_obj,
         'student_form': StudentForm(),
         'session_form': ManualSessionForm(),
         'students': Student.objects.filter(is_active=True),

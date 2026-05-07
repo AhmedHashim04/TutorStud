@@ -218,7 +218,11 @@ class GlobalSettingsForm(forms.ModelForm):
 
     class Meta:
         model = GlobalSettings
-        fields = ['default_session_price', 'fajr_iqama_delay', 'dhuhr_iqama_delay', 'asr_iqama_delay', 'maghrib_iqama_delay', 'isha_iqama_delay']
+        fields = [
+            'default_session_price',
+            'fajr_iqama_delay', 'dhuhr_iqama_delay', 'asr_iqama_delay', 'maghrib_iqama_delay', 'isha_iqama_delay',
+            'fajr_post_block', 'dhuhr_post_block', 'asr_post_block', 'maghrib_post_block', 'isha_post_block',
+        ]
         widgets = {
             'default_session_price': forms.NumberInput(attrs={'class': 'form-control'})
         }
@@ -236,7 +240,6 @@ class GlobalSettingsForm(forms.ModelForm):
                 'class': common_input_class,
                 'min': 0,
                 'step': 1,
-                'placeholder': '10',
             })
         self.fields['default_session_price'].widget.attrs.update({'class': 'form-control'})
 
