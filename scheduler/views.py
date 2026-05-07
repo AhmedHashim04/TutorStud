@@ -762,3 +762,72 @@ def delete_exception(request, pk):
                 messages.warning(request, err)
     
     return redirect('scheduler:manage_exceptions', student_id=student.id)
+
+
+def recommend_session_time(request):
+    """AJAX endpoint to recommend the next available time slot without conflicts."""
+    from django.http import JsonResponse
+    from django.utils.dateparse import parse_datetime
+    from .services import validate_session, ensure_aware, to_cairo, CAIRO_TZ
+    
+    if request.method != 'POST':
+        return JsonResponse({'error': 'Method not allowed'}, status=405)
+    
+    try:
+        student_id = int(request.POST.get('student_id'))
+        start_time_str = request.POST.get('start_time')  # e.g., "2026-05-07T15:00"
+        duration = int(request.POST.get('duration') or 60)
+        
+        student = get_object_or_404(Student, id=student_id)
+        
+        # Parse the start time
+        start_dt = parse_datetime(start_time_str)
+        if not start_dt:
+            return JsonResponse({'error': 'Invalid start time format'}, status=400)
+        
+        start_dt = ensure_aware(start_dt)
+        
+        # Search for the next available slot within the next 7 days
+        max_days = 7
+        slot_duration = 15  # Check in 15-minute increments
+        
+        for day_offset in range(max_days):
+            current_date = to_cairo(start_dt).date() + timedelta(days=day_offset)
+            
+            # Start searching from 8:00 AM to 8:00 PM each day
+            search_start_time = datetime.min.time().replace(hour=0)
+            search_end_time = datetime.min.time().replace(hour=24)
+            
+            search_start = CAIRO_TZ.localize(datetime.combine(current_date, search_start_time))
+            search_end = CAIRO_TZ.localize(datetime.combine(current_date, search_end_time))
+            
+            # If it's the first day, start from the originally requested time or 8 AM, whichever is later
+            if day_offset == 0:
+                original_time = to_cairo(start_dt).time()
+                if original_time >= search_start_time and original_time <= search_end_time:
+                    current_slot = start_dt
+                else:
+                    current_slot = search_start
+            else:
+                current_slot = search_start
+            
+            while current_slot + timedelta(minutes=duration) <= search_end:
+                errors = validate_session(current_slot, duration, student_id=student_id)
+                if not errors:
+                    # Found a free slot!
+                    return JsonResponse({
+                        'success': True,
+                        'recommended_time': current_slot.isoformat(),
+                        'message': f"Found available slot on {current_slot.strftime('%A, %B %d at %H:%M')}"
+                    })
+                
+                # Move to next 15-minute slot
+                current_slot += timedelta(minutes=slot_duration)
+        
+        return JsonResponse({
+            'success': False,
+            'message': f"No available slots found in the next {max_days} days during working hours (8 AM - 8 PM)"
+        })
+        
+    except Exception as e:
+        return JsonResponse({'error': str(e)}, status=500)

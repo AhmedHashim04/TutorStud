@@ -250,6 +250,7 @@
           </div>
           <div class="modal-footer">
             <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Close</button>
+            <button type="button" class="btn btn-warning" id="recommendTimeBtn"><i class="fas fa-lightbulb me-1"></i>{% trans "Recommend Time" %}</button>
             <button type="submit" class="btn btn-primary">Add to Calendar</button>
           </div>
       </form>
@@ -336,6 +337,76 @@ document.addEventListener("DOMContentLoaded", function() {
         
         // Initial trigger to populate empty fields
         updateDefaults();
+    }
+
+    // Recommend Session Time Handler
+    const recommendBtn = document.getElementById('recommendTimeBtn');
+    if(recommendBtn) {
+        recommendBtn.addEventListener('click', function() {
+            const studentId = document.getElementById('id_student').value;
+            const startTimeInput = document.getElementById('id_start_time');
+            const durationInput = document.getElementById('id_duration');
+
+            if(!studentId) {
+                alert('Please select a student first.');
+                return;
+            }
+
+            if(!startTimeInput.value) {
+                alert('Please enter a start time first.');
+                return;
+            }
+
+            const startTime = startTimeInput.value;
+            const duration = durationInput.value || 60;
+
+            // Show loading state
+            const originalText = recommendBtn.innerHTML;
+            recommendBtn.disabled = true;
+            recommendBtn.innerHTML = '<i class="fas fa-spinner fa-spin me-1"></i>Searching...';
+
+            // Make API request
+            const formData = new FormData();
+            formData.append('student_id', studentId);
+            formData.append('start_time', startTime);
+            formData.append('duration', duration);
+
+            fetch('{% url "scheduler:recommend_session_time" %}', {
+                method: 'POST',
+                headers: {
+                    'X-CSRFToken': document.querySelector('[name="csrfmiddlewaretoken"]').value,
+                },
+                body: formData
+            })
+            .then(response => response.json())
+            .then(data => {
+                if(data.success) {
+                    // Parse the ISO datetime and convert to the input format
+                    const recommendedDate = new Date(data.recommended_time);
+                    const year = recommendedDate.getFullYear();
+                    const month = String(recommendedDate.getMonth() + 1).padStart(2, '0');
+                    const day = String(recommendedDate.getDate()).padStart(2, '0');
+                    const hours = String(recommendedDate.getHours()).padStart(2, '0');
+                    const minutes = String(recommendedDate.getMinutes()).padStart(2, '0');
+
+                    const formattedTime = `${year}-${month}-${day}T${hours}:${minutes}`;
+                    startTimeInput.value = formattedTime;
+
+                    // Show success message
+                    alert('✓ ' + data.message + '\n\nStart time updated. Please review and submit.');
+                } else {
+                    alert('⚠️ ' + data.message);
+                }
+            })
+            .catch(error => {
+                console.error('Error:', error);
+                alert('Failed to get recommendation. Please try again.');
+            })
+            .finally(() => {
+                recommendBtn.disabled = false;
+                recommendBtn.innerHTML = originalText;
+            });
+        });
     }
 });
 </script>
