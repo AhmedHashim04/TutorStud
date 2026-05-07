@@ -118,7 +118,7 @@ def toggle_student_status(request, pk):
             return JsonResponse({
                 'status': 'success',
                 'is_active': student.is_active,
-                'message': f"{student.name} is now {'🟢 Active' if student.is_active else '🔴 Inactive'}"
+                'message': f"{student.name} is now {' Active' if student.is_active else 'Inactive'}"
             })
     
     next_url = request.POST.get('next', 'scheduler:student_list')
