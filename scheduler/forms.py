@@ -62,6 +62,20 @@ class RecurringScheduleForm(forms.ModelForm):
             instance.save()
         return instance
 
+    def clean(self):
+        cleaned = super().clean()
+        weekday = int(cleaned.get('weekday')) if cleaned.get('weekday') is not None else None
+
+        # When editing, ensure no duplicate weekday exists for the same student
+        if self.instance and getattr(self.instance, 'student', None) and weekday is not None:
+            qs = RecurringSchedule.objects.filter(student=self.instance.student, weekday=weekday)
+            if self.instance.pk:
+                qs = qs.exclude(pk=self.instance.pk)
+            if qs.exists():
+                raise forms.ValidationError('A schedule for this day already exists for this student.')
+
+        return cleaned
+
 
 class ScheduleExceptionForm(forms.ModelForm):
     """Form for creating and managing schedule exceptions."""

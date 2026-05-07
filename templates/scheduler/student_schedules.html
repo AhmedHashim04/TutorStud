@@ -120,11 +120,11 @@
                 <h5 class="modal-title"><i class="fas fa-calendar-plus me-2"></i>{% trans "Add Recurring Schedule" %}</h5>
                 <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal"></button>
             </div>
-            <form method="POST" action="{% url 'scheduler:add_student' %}" class="modal-body p-4">
+            <form method="POST" action="{% url 'scheduler:add_student' %}" class="modal-body p-4" id="add-schedule-single-form">
                 {% csrf_token %}
                 <div class="mb-3">
                     <label for="scheduleDay" class="form-label">{% trans "Day of Week" %}</label>
-                    <select class="form-select" name="schedule_day_0" required>
+                    <select class="form-select" name="schedule_day_0" id="single-schedule-day" required>
                         <option value="">{% trans "Select day..." %}</option>
                         <option value="5">{% trans "Saturday" %}</option>
                         <option value="6">{% trans "Sunday" %}</option>
@@ -147,6 +147,26 @@
         </div>
     </div>
 </div>
+
+<script>
+document.addEventListener('DOMContentLoaded', function(){
+    const existingDays = Array.from(document.querySelectorAll('tbody tr')).map(function(tr){
+        const dayCell = tr.querySelector('td:nth-child(2)');
+        if(!dayCell) return null;
+        // Attempt to map day name to value
+        const name = dayCell.textContent.trim().toLowerCase();
+        const map = { 'saturday': '5','sunday':'6','monday':'0','tuesday':'1','wednesday':'2','thursday':'3','friday':'4' };
+        return map[name] || null;
+    }).filter(Boolean);
+
+    const select = document.getElementById('single-schedule-day');
+    if(select){
+        Array.from(select.options).forEach(function(opt){
+            if(existingDays.includes(opt.value)) opt.disabled = true;
+        });
+    }
+});
+</script>
 
 {% include "scheduler/includes/modals.html" %}
 {% endblock %}

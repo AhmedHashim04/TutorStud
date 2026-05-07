@@ -65,38 +65,140 @@
         <h5 class="modal-title">{% trans "Add Student (Fast Setup)" %}</h5>
         <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
       </div>
-      <form action="{% url 'scheduler:add_student' %}" method="post">
+      <form id="add-student-form" action="{% url 'scheduler:add_student' %}" method="post">
           <div class="modal-body">
               {% csrf_token %}
               {{ student_form.as_p }}
-              
+
               <hr>
-              <h6>{% trans "Recurring Schedule" %}</h6>
-              <div id="schedule-rows">
-                  <div class="row mb-2">
-                      <div class="col-6">
-                          <select name="schedule_day_0" class="form-select">
-                              <option value="5">Saturday</option>
-                              <option value="6">Sunday</option>
-                              <option value="0">Monday</option>
-                              <option value="1">Tuesday</option>
-                              <option value="2">Wednesday</option>
-                              <option value="3">Thursday</option>
-                              <option value="4">Friday</option>
-                          </select>
-                      </div>
-                      <div class="col-6">
-                          <input type="time" name="schedule_time_0" class="form-control" required>
-                      </div>
-                  </div>
+              <h6 class="mb-2">{% trans "Recurring Schedule" %}</h6>
+
+              <div id="schedule-list" class="mb-2">
+                  <!-- schedule cards will be injected here -->
               </div>
-              <button type="button" class="btn btn-sm btn-link" onclick="addScheduleRow()">+ Add Another Day</button>
+
+              <div class="d-flex gap-2 align-items-center mb-2">
+                  <button type="button" id="add-day-btn" class="btn btn-sm btn-outline-primary">+ Add Day</button>
+                  <small id="schedule-help" class="text-muted">{% trans "Add up to 7 unique weekdays." %}</small>
+              </div>
+
+              <div id="schedule-error" class="invalid-feedback d-block" style="display:none;"></div>
           </div>
           <div class="modal-footer">
             <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Close</button>
-            <button type="submit" class="btn btn-primary">Save & Generate</button>
+            <button type="submit" id="add-student-submit" class="btn btn-primary">
+                <span id="add-student-spinner" class="spinner-border spinner-border-sm me-2" style="display:none;" role="status" aria-hidden="true"></span>
+                Save & Generate
+            </button>
           </div>
       </form>
+
+      <script>
+      (function(){
+          const DAY_OPTIONS = [
+              {v:5,t:'Saturday'},{v:6,t:'Sunday'},{v:0,t:'Monday'},{v:1,t:'Tuesday'},{v:2,t:'Wednesday'},{v:3,t:'Thursday'},{v:4,t:'Friday'}
+          ];
+          let scheduleCount = 0;
+          const maxDays = 7;
+          const list = document.getElementById('schedule-list');
+          const addBtn = document.getElementById('add-day-btn');
+          const errorDiv = document.getElementById('schedule-error');
+          const form = document.getElementById('add-student-form');
+          const submitBtn = document.getElementById('add-student-submit');
+          const spinner = document.getElementById('add-student-spinner');
+
+          function createRow(selected){
+              const card = document.createElement('div');
+              card.className = 'card mb-2 p-2';
+              card.style.borderRadius = '10px';
+              card.innerHTML = `
+                <div class="row g-2 align-items-center">
+                  <div class="col-6">
+                    <select name="schedule_day_${scheduleCount}" class="form-select form-control form-control-sm" required></select>
+                  </div>
+                  <div class="col-5">
+                    <input type="time" name="schedule_time_${scheduleCount}" class="form-control form-control-sm" required>
+                  </div>
+                  <div class="col-1 text-end">
+                    <button type="button" class="btn btn-sm btn-outline-danger remove-day-btn" title="Remove"><i class="fas fa-trash"></i></button>
+                  </div>
+                </div>
+              `;
+              // populate select
+              const sel = card.querySelector('select');
+              DAY_OPTIONS.forEach(function(o){
+                  const opt = document.createElement('option'); opt.value = o.v; opt.text = o.t; sel.appendChild(opt);
+              });
+              if(selected!=null) sel.value = selected;
+              // append
+              list.appendChild(card);
+              scheduleCount++;
+              refreshControls();
+          }
+
+          function refreshControls(){
+              // disable add if reached max or no more unselected days
+              const selected = Array.from(list.querySelectorAll('select')).map(s=>s.value);
+              const unique = new Set(selected.filter(v=>v!=='')).size;
+              if(unique >= maxDays) addBtn.disabled = true; else addBtn.disabled = false;
+
+              // disable duplicate options
+              list.querySelectorAll('select').forEach(function(sel){
+                  const val = sel.value;
+                  sel.querySelectorAll('option').forEach(function(opt){
+                      if(opt.value !== '' && opt.value !== val && selected.includes(opt.value)){
+                          opt.disabled = true;
+                      } else {
+                          opt.disabled = false;
+                      }
+                  });
+              });
+          }
+
+          list.addEventListener('change', function(e){
+              if(e.target.tagName === 'SELECT'){
+                  refreshControls();
+              }
+          });
+
+          list.addEventListener('click', function(e){
+              if(e.target.closest('.remove-day-btn')){
+                  e.target.closest('.card').remove();
+                  refreshControls();
+              }
+          });
+
+          addBtn.addEventListener('click', function(){
+              const selected = Array.from(list.querySelectorAll('select')).map(s=>s.value).filter(v=>v!=='');
+              if(selected.length >= maxDays){
+                  showError('Maximum 7 unique days allowed.');
+                  return;
+              }
+              createRow();
+          });
+
+          function showError(msg){
+              errorDiv.style.display = 'block';
+              errorDiv.textContent = msg;
+          }
+          function clearError(){ errorDiv.style.display='none'; errorDiv.textContent=''; }
+
+          // initialize with one row
+          createRow();
+
+          // form submit validation / loading
+          form.addEventListener('submit', function(e){
+              clearError();
+              const selected = Array.from(list.querySelectorAll('select')).map(s=>s.value).filter(v=>v!=='');
+              if(selected.length === 0){ e.preventDefault(); showError('Please add at least one schedule day.'); return; }
+              if(new Set(selected).size !== selected.length){ e.preventDefault(); showError('Duplicate days selected.'); return; }
+              if(selected.length > maxDays){ e.preventDefault(); showError('Cannot select more than 7 unique days.'); return; }
+
+              // show loading
+              submitBtn.disabled = true; spinner.style.display = 'inline-block';
+          });
+      })();
+      </script>
     </div>
   </div>
 </div>

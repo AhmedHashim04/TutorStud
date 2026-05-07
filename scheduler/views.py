@@ -250,18 +250,40 @@ def add_student(request):
         form = StudentForm(request.POST)
         if form.is_valid():
             student = form.save()
+
+            # Collect schedule inputs and validate uniqueness + count
+            schedule_days = []
+            schedule_rows = []
             i = 0
             while f'schedule_day_{i}' in request.POST:
                 day = request.POST.get(f'schedule_day_{i}')
                 time_val = request.POST.get(f'schedule_time_{i}')
                 if day and time_val:
-                    RecurringSchedule.objects.create(
-                        student=student,
-                        weekday=int(day),
-                        start_time=time_val
-                    )
+                    schedule_rows.append((int(day), time_val))
+                    schedule_days.append(int(day))
                 i += 1
-            
+
+            errors_found = False
+            if len(set(schedule_days)) != len(schedule_days):
+                messages.error(request, "Duplicate days selected in schedule. Please pick unique weekdays.")
+                errors_found = True
+            if len(set(schedule_days)) > 7:
+                messages.error(request, "You cannot select more than 7 unique days.")
+                errors_found = True
+
+            if errors_found:
+                # rollback created student to avoid orphan
+                student.delete()
+                return redirect('scheduler:dashboard')
+
+            # Create schedules
+            for day, time_val in schedule_rows:
+                RecurringSchedule.objects.create(
+                    student=student,
+                    weekday=day,
+                    start_time=time_val
+                )
+
             count, errors = generate_sessions_for_student(student, weeks=4)
             messages.success(request, f"Added {student.name} and generated {count} sessions.")
             if errors:
