@@ -198,7 +198,7 @@ def generate_sessions_for_student(student, weeks=4):
             
             if not already_exists:
                 # Validate slot
-                errors = validate_session(actual_start_dt, student.session_duration)
+                errors = validate_session(actual_start_dt, student.session_duration, student_id=student.id)
                 if errors:
                     for error in errors:
                         log_generation_error(actual_start_dt, error)
@@ -221,7 +221,7 @@ def generate_sessions_for_student(student, weeks=4):
                 ).exists()
                 
                 if not already_exists_extra:
-                    errors = validate_session(extra_dt, student.session_duration)
+                    errors = validate_session(extra_dt, student.session_duration, student_id=student.id)
                     if errors:
                         for error in errors:
                             log_generation_error(extra_dt, error, is_extra=True)
@@ -250,6 +250,23 @@ def generate_sessions_for_all_active_students(weeks=4):
         all_errors.extend(errs)
         
     return total_created, all_errors
+
+
+def sync_future_sessions_for_student(student, weeks=4):
+    """
+    Rebuild a student's future scheduled sessions from recurring rules.
+
+    This keeps past sessions intact, removes only future `scheduled` sessions,
+    then regenerates from active recurring schedules and exceptions.
+    """
+    now = timezone.now()
+    Session.objects.filter(
+        student=student,
+        status='scheduled',
+        start_time__gte=now,
+    ).delete()
+
+    return generate_sessions_for_student(student, weeks=weeks)
 
 
 def auto_regenerate_empty_schedules():

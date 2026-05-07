@@ -12,7 +12,7 @@
             <div class="card bg-primary text-white">
                 <div class="card-body">
                     <h5 class="card-title"><i class="fas fa-coins me-2"></i>{% trans "Earned Today" %}</h5>
-                    <h2 class="mb-0">${{ metrics.today_earned }}</h2>
+                    <h2 class="mb-0">EGP {{ metrics.today_earned }}</h2>
                 </div>
             </div>
         </div>
@@ -20,7 +20,7 @@
             <div class="card bg-success text-white">
                 <div class="card-body">
                     <h5 class="card-title"><i class="fas fa-wallet me-2"></i>{% trans "Earned This Week" %}</h5>
-                    <h2 class="mb-0">${{ metrics.week_earned }}</h2>
+                    <h2 class="mb-0">EGP {{ metrics.week_earned }}</h2>
                 </div>
             </div>
         </div>
@@ -121,6 +121,42 @@
                                 <div class="mt-1 d-flex justify-content-between align-items-center">
                                     <span>{{ session.student.name }}</span>
                                     <small class="text-muted">{{ session.tutor_time_formatted }} 🇪🇬</small>
+                                </div>
+                                <div class="mt-2 d-flex gap-2">
+                                    <button type="button" class="btn btn-sm btn-outline-primary" data-bs-toggle="modal" data-bs-target="#rescheduleDashboardModal{{ session.pk }}">
+                                        <i class="fas fa-calendar-alt me-1"></i>{% trans "Edit Date" %}
+                                    </button>
+                                    <form action="{% url 'scheduler:update_session_status' session.pk %}" method="post" class="d-inline">
+                                        {% csrf_token %}
+                                        <input type="hidden" name="status" value="cancelled_by_teacher">
+                                        <input type="hidden" name="next" value="{{ request.path }}">
+                                        <button type="submit" class="btn btn-sm btn-outline-danger" onclick="return confirm('Cancel this upcoming session?');">
+                                            <i class="fas fa-ban me-1"></i>{% trans "Cancel" %}
+                                        </button>
+                                    </form>
+                                </div>
+                            </div>
+
+                            <div class="modal fade" id="rescheduleDashboardModal{{ session.pk }}" tabindex="-1" aria-hidden="true">
+                                <div class="modal-dialog modal-sm">
+                                    <div class="modal-content">
+                                        <div class="modal-header">
+                                            <h6 class="modal-title">{% trans "Edit Upcoming Session" %}</h6>
+                                            <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+                                        </div>
+                                        <form action="{% url 'scheduler:reschedule_session' session.pk %}" method="post">
+                                            {% csrf_token %}
+                                            <input type="hidden" name="next" value="{{ request.path }}">
+                                            <div class="modal-body">
+                                                <label class="form-label">{% trans "New Date & Time" %}</label>
+                                                <input type="datetime-local" class="form-control" name="start_time" value="{{ session.start_time|date:'Y-m-d\\TH:i' }}" required>
+                                            </div>
+                                            <div class="modal-footer">
+                                                <button type="button" class="btn btn-secondary btn-sm" data-bs-dismiss="modal">{% trans "Close" %}</button>
+                                                <button type="submit" class="btn btn-primary btn-sm">{% trans "Save" %}</button>
+                                            </div>
+                                        </form>
+                                    </div>
                                 </div>
                             </div>
                         {% endfor %}

@@ -135,7 +135,7 @@
                 <div class="d-flex justify-content-between align-items-start mb-3">
                     <div>
                         <h6 class="text-muted mb-1 text-uppercase" style="font-size: 0.75rem; letter-spacing: 0.5px;">Earned Revenue</h6>
-                        <h2 class="mb-0 fw-bold" id="metricEarned">$0</h2>
+                        <h2 class="mb-0 fw-bold" id="metricEarned">EGP 0</h2>
                     </div>
                     <div class="hero-icon bg-success bg-opacity-10 text-success">
                         <i class="fas fa-wallet"></i>
@@ -149,7 +149,7 @@
                 <div class="d-flex justify-content-between align-items-start mb-3">
                     <div>
                         <h6 class="text-muted mb-1 text-uppercase" style="font-size: 0.75rem; letter-spacing: 0.5px;">Projected (Upcoming)</h6>
-                        <h2 class="mb-0 fw-bold" id="metricProjected">$0</h2>
+                        <h2 class="mb-0 fw-bold" id="metricProjected">EGP 0</h2>
                     </div>
                     <div class="hero-icon bg-primary bg-opacity-10 text-primary">
                         <i class="fas fa-chart-line"></i>
@@ -298,7 +298,7 @@ function initCharts() {
                     bodyFont: { size: 14, weight: 'bold' },
                     callbacks: {
                         label: function(context) {
-                            return ' $' + context.parsed.y;
+                            return ' EGP ' + context.parsed.y;
                         }
                     }
                 }
@@ -308,7 +308,7 @@ function initCharts() {
                     beginAtZero: true,
                     grid: { color: '#f1f5f9', drawBorder: false },
                     border: { display: false },
-                    ticks: { callback: function(value) { return '$' + value; } }
+                    ticks: { callback: function(value) { return 'EGP ' + value; } }
                 },
                 x: {
                     grid: { display: false, drawBorder: false },
@@ -398,8 +398,8 @@ function fetchAnalyticsData() {
         .then(response => response.json())
         .then(data => {
             // Update Hero
-            document.getElementById('metricEarned').innerText = '$' + data.hero.earned_revenue.toLocaleString();
-            document.getElementById('metricProjected').innerText = '$' + data.hero.projected_revenue.toLocaleString();
+            document.getElementById('metricEarned').innerText = 'EGP ' + data.hero.earned_revenue.toLocaleString();
+            document.getElementById('metricProjected').innerText = 'EGP ' + data.hero.projected_revenue.toLocaleString();
             document.getElementById('metricSessions').innerText = data.hero.total_past_sessions.toLocaleString();
             
             const attEl = document.getElementById('metricAttendance');
@@ -438,7 +438,7 @@ function fetchAnalyticsData() {
                             </td>
                             <td><span class="badge bg-light text-dark border">${student.country}</span></td>
                             <td class="text-center">${student.sessions}</td>
-                            <td class="text-end fw-bold text-success">$${student.revenue.toLocaleString()}</td>
+                            <td class="text-end fw-bold text-success">EGP ${student.revenue.toLocaleString()}</td>
                         </tr>
                     `;
                 });

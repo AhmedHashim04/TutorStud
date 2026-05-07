@@ -149,6 +149,20 @@ class ManualSessionForm(forms.ModelForm):
         self.fields['student'].queryset = Student.objects.filter(is_active=True)
 
 
+class SessionRescheduleForm(forms.Form):
+    """Simple form to move an upcoming session to a new date/time."""
+    start_time = forms.DateTimeField(
+        widget=forms.DateTimeInput(attrs={'type': 'datetime-local', 'class': 'form-control'}),
+        input_formats=['%Y-%m-%dT%H:%M']
+    )
+
+    def clean_start_time(self):
+        start_time = self.cleaned_data['start_time']
+        if start_time <= timezone.now():
+            raise forms.ValidationError(_('New session date/time must be in the future.'))
+        return start_time
+
+
 class SessionStatusForm(forms.ModelForm):
     class Meta:
         model = Session

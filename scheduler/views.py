@@ -6,8 +6,8 @@ from django.core.paginator import Paginator
 
 from datetime import timedelta
 from .models import Session, Student, RecurringSchedule, GlobalSettings, PrayerTime, COUNTRY_CHOICES
-from .forms import StudentForm, ManualSessionForm, GlobalSettingsForm
-from .services import generate_sessions_for_student, generate_sessions_for_all_active_students, CAIRO_TZ, fetch_cairo_prayer_times
+from .forms import StudentForm, ManualSessionForm, GlobalSettingsForm, SessionRescheduleForm
+from .services import generate_sessions_for_student, generate_sessions_for_all_active_students, sync_future_sessions_for_student, CAIRO_TZ, fetch_cairo_prayer_times
 from datetime import datetime
 
 
@@ -321,6 +321,44 @@ def delete_session(request, pk):
         return redirect(next_url)
     return redirect(next_url)
 
+
+def reschedule_session(request, pk):
+    """Move an upcoming scheduled session to a new date/time."""
+    session = get_object_or_404(Session, pk=pk)
+
+    if request.method == 'POST':
+        if session.status != 'scheduled':
+            messages.error(request, "Only scheduled sessions can be rescheduled.")
+        else:
+            form = SessionRescheduleForm(request.POST)
+            if form.is_valid():
+                from .services import ensure_aware, validate_session
+
+                new_start = ensure_aware(form.cleaned_data['start_time'])
+                errors = validate_session(
+                    new_start,
+                    session.duration,
+                    exclude_session_id=session.id,
+                    student_id=session.student_id,
+                )
+
+                if errors:
+                    for err in errors:
+                        messages.error(request, err)
+                else:
+                    session.start_time = new_start
+                    session.save(update_fields=['start_time'])
+                    messages.success(request, f"Session moved to {session.tutor_time.strftime('%Y-%m-%d %H:%M')} (Cairo).")
+            else:
+                for field_errors in form.errors.values():
+                    for error in field_errors:
+                        messages.error(request, error)
+
+    next_url = request.POST.get('next', 'scheduler:dashboard')
+    if next_url.startswith('/'):
+        return redirect(next_url)
+    return redirect(next_url)
+
 def generate_sessions_view(request):
     if request.method == 'POST':
         count, errors = generate_sessions_for_all_active_students(weeks=4)
@@ -513,8 +551,7 @@ def edit_schedule(request, pk):
             form.save()
             messages.success(request, "Schedule updated successfully.")
             # Regenerate sessions after changing schedule
-            from .services import generate_sessions_for_student
-            count, errors = generate_sessions_for_student(student, weeks=4)
+            count, errors = sync_future_sessions_for_student(student, weeks=4)
             if count > 0:
                 messages.info(request, f"Generated {count} new sessions based on updated schedule.")
             if errors:
@@ -596,8 +633,7 @@ def create_exception(request, schedule_id):
             messages.success(request, f"Exception created: {exception.get_detailed_description()}")
             
             # Regenerate sessions to apply the exception
-            from .services import generate_sessions_for_student
-            count, errors = generate_sessions_for_student(student, weeks=4)
+            count, errors = sync_future_sessions_for_student(student, weeks=4)
             if count > 0:
                 messages.info(request, f"Regenerated {count} sessions with new exception applied.")
             if errors:
@@ -635,10 +671,12 @@ def edit_exception(request, pk):
             messages.success(request, "Exception updated successfully.")
             
             # Regenerate sessions
-            from .services import generate_sessions_for_student
-            count, errors = generate_sessions_for_student(student, weeks=4)
+            count, errors = sync_future_sessions_for_student(student, weeks=4)
             if count > 0:
                 messages.info(request, f"Regenerated {count} sessions with updated exception.")
+            if errors:
+                for err in errors:
+                    messages.warning(request, err)
             
             return redirect('scheduler:manage_exceptions', student_id=student.id)
     else:
@@ -669,7 +707,11 @@ def delete_exception(request, pk):
         messages.success(request, "Exception deleted successfully.")
         
         # Regenerate to remove the exception's effects
-        from .services import generate_sessions_for_student
-        generate_sessions_for_student(student, weeks=4)
+        count, errors = sync_future_sessions_for_student(student, weeks=4)
+        if count > 0:
+            messages.info(request, f"Regenerated {count} sessions after deleting exception.")
+        if errors:
+            for err in errors:
+                messages.warning(request, err)
     
     return redirect('scheduler:manage_exceptions', student_id=student.id)

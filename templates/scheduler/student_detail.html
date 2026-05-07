@@ -252,7 +252,7 @@ function showNotification(message, type) {
 
                     <div class="d-flex justify-content-between text-muted small">
                         <span><i class="fas fa-stopwatch me-1"></i> {{ student.session_duration }} mins</span>
-                        <span><i class="fas fa-tag me-1"></i> ${{ student.session_price }} / session</span>
+                        <span><i class="fas fa-tag me-1"></i> EGP {{ student.session_price }} / session</span>
                     </div>
                 </div>
             </div>
@@ -272,7 +272,7 @@ function showNotification(message, type) {
                 <div class="col-6">
                     <div class="card bg-light border-0 h-100">
                         <div class="card-body text-center p-3">
-                            <h3 class="mb-0 text-primary">${{ student.monthly_revenue|floatformat:0 }}</h3>
+                            <h3 class="mb-0 text-primary">EGP {{ student.monthly_revenue|floatformat:0 }}</h3>
                             <small class="text-muted text-uppercase" style="font-size: 0.7rem;">Rev This Month</small>
                         </div>
                     </div>
@@ -316,8 +316,8 @@ function showNotification(message, type) {
         <!-- RIGHT COLUMN: The Timeline -->
         <div class="col-lg-8">
             <div class="card shadow-lg border-0">
-                <div class="card-header bg-gradient text-white p-3" style="background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);">
-                    <h5 class="mb-0"><i class="fas fa-timeline me-2"></i>Session Timeline</h5>
+                <div class="card-header bg-gradient text-primary p-3" style="background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);">
+                    <h5 class="mb-0"><i class="fas fa-timeline me-2 text-bold"></i>Session Timeline</h5>
                 </div>
 
                 <ul class="nav nav-pills mb-0" id="timelineTabs" role="tablist" style="border-bottom: 1px solid #e9ecef; background: #f8f9fa;">
@@ -357,11 +357,40 @@ function showNotification(message, type) {
                                                 </div>
                                             </div>
                                         </div>
-                                        <div class="col-md-3 text-end">
-                                            <form action="{% url 'scheduler:delete_session' session.pk %}" method="post" class="d-inline">
+                                        <div class="col-md-3 text-end d-flex justify-content-end gap-2">
+                                            <button type="button" class="btn btn-sm btn-outline-primary" data-bs-toggle="modal" data-bs-target="#rescheduleStudentModal{{ session.pk }}" title="Edit Date">
+                                                <i class="fas fa-calendar-alt"></i>
+                                            </button>
+                                            <form action="{% url 'scheduler:update_session_status' session.pk %}" method="post" class="d-inline">
+                                                {% csrf_token %}
+                                                <input type="hidden" name="status" value="cancelled_by_teacher">
+                                                <input type="hidden" name="next" value="{{ request.path }}">
+                                                <button type="submit" class="btn btn-sm btn-outline-danger" title="Cancel Session" onclick="return confirm('Cancel this upcoming session?');">
+                                                    <i class="fas fa-ban"></i>
+                                                </button>
+                                            </form>
+                                        </div>
+                                    </div>
+                                </div>
+
+                                <div class="modal fade" id="rescheduleStudentModal{{ session.pk }}" tabindex="-1" aria-hidden="true">
+                                    <div class="modal-dialog modal-sm">
+                                        <div class="modal-content">
+                                            <div class="modal-header">
+                                                <h6 class="modal-title">Edit Upcoming Session</h6>
+                                                <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+                                            </div>
+                                            <form action="{% url 'scheduler:reschedule_session' session.pk %}" method="post">
                                                 {% csrf_token %}
                                                 <input type="hidden" name="next" value="{{ request.path }}">
-                                                <button type="submit" class="btn btn-sm btn-outline-danger" title="Delete"><i class="fas fa-trash"></i></button>
+                                                <div class="modal-body">
+                                                    <label class="form-label fw-bold">New Date &amp; Time</label>
+                                                    <input type="datetime-local" class="form-control" name="start_time" value="{{ session.start_time|date:'Y-m-d\\TH:i' }}" required>
+                                                </div>
+                                                <div class="modal-footer">
+                                                    <button type="button" class="btn btn-secondary btn-sm" data-bs-dismiss="modal">Close</button>
+                                                    <button type="submit" class="btn btn-primary btn-sm">Save</button>
+                                                </div>
                                             </form>
                                         </div>
                                     </div>
