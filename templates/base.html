@@ -247,6 +247,7 @@
                   {{ manual_session_form.status }}
                   {% if manual_session_form.status.errors %}<div class="text-danger small mt-1">{{ manual_session_form.status.errors.0 }}</div>{% endif %}
               </div>
+              <div id="recommendationResultContainer" style="display: none; margin-top: 12px;"></div>
           </div>
           <div class="modal-footer">
             <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Close</button>
@@ -313,6 +314,147 @@ function addScheduleRow() {
     scheduleCount++;
 }
 
+// Modern Confirmation Modal System
+function showConfirmation(title, message, onConfirm, onCancel) {
+    let confirmModal = document.getElementById('modernConfirmModal');
+    if (!confirmModal) {
+        confirmModal = document.createElement('div');
+        confirmModal.id = 'modernConfirmModal';
+        confirmModal.className = 'modal fade';
+        confirmModal.setAttribute('tabindex', '-1');
+        confirmModal.setAttribute('aria-hidden', 'true');
+        confirmModal.innerHTML = `
+            <div class="modal-dialog modal-sm">
+                <div class="modal-content">
+                    <div class="modal-header border-0">
+                        <h6 class="modal-title" id="confirmTitle"></h6>
+                        <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+                    </div>
+                    <div class="modal-body" id="confirmMessage"></div>
+                    <div class="modal-footer border-0 gap-2">
+                        <button type="button" class="btn btn-outline-secondary" id="confirmCancel" data-bs-dismiss="modal">Cancel</button>
+                        <button type="button" class="btn btn-danger" id="confirmOk">Confirm</button>
+                    </div>
+                </div>
+            </div>
+        `;
+        document.body.appendChild(confirmModal);
+    }
+    
+    document.getElementById('confirmTitle').textContent = title;
+    document.getElementById('confirmMessage').textContent = message;
+    
+    const confirmBtn = document.getElementById('confirmOk');
+    const cancelBtn = document.getElementById('confirmCancel');
+    const modal = bootstrap.Modal.getOrCreateInstance(confirmModal);
+    
+    confirmBtn.onclick = function() {
+        modal.hide();
+        if (onConfirm) onConfirm();
+    };
+    
+    cancelBtn.onclick = function() {
+        if (onCancel) onCancel();
+    };
+    
+    modal.show();
+}
+
+// Toast notification system
+function showToast(message, type = 'info') {
+    const toastContainer = document.getElementById('toastContainer') || createToastContainer();
+    const toastId = 'toast-' + Date.now();
+    
+    const bgColor = type === 'success' ? 'rgba(16, 185, 129, 0.95)' : type === 'error' ? 'rgba(239, 68, 68, 0.95)' : 'rgba(59, 130, 246, 0.95)';
+    const icon = type === 'success' ? '✓' : type === 'error' ? '✕' : 'ℹ';
+    
+    const toast = document.createElement('div');
+    toast.id = toastId;
+    toast.innerHTML = `
+        <div style="
+            background: ${bgColor};
+            color: white;
+            padding: 14px 18px;
+            border-radius: 10px;
+            box-shadow: 0 10px 25px rgba(0,0,0,0.2);
+            display: flex;
+            align-items: center;
+            gap: 10px;
+            font-weight: 500;
+            font-size: 14px;
+            animation: slideIn 0.3s ease-out;
+        ">
+            <span style="font-weight: bold; font-size: 16px;">${icon}</span>
+            <span>${message}</span>
+        </div>
+    `;
+    toastContainer.appendChild(toast);
+    setTimeout(() => {
+        toast.style.animation = 'slideOut 0.3s ease-out';
+        setTimeout(() => toast.remove(), 300);
+    }, 4000);
+}
+
+function createToastContainer() {
+    const container = document.createElement('div');
+    container.id = 'toastContainer';
+    container.style.cssText = `
+        position: fixed;
+        top: 20px;
+        right: 20px;
+        z-index: 9999;
+        display: flex;
+        flex-direction: column;
+        gap: 10px;
+    `;
+    document.body.appendChild(container);
+    
+    // Add animations
+    const style = document.createElement('style');
+    style.textContent = `
+        @keyframes slideIn {
+            from { transform: translateX(400px); opacity: 0; }
+            to { transform: translateX(0); opacity: 1; }
+        }
+        @keyframes slideOut {
+            from { transform: translateX(0); opacity: 1; }
+            to { transform: translateX(400px); opacity: 0; }
+        }
+    `;
+    document.head.appendChild(style);
+    return container;
+}
+
+// Show inline notification in modal
+function showInlineNotification(message, type = 'info') {
+    const resultContainer = document.getElementById('recommendationResultContainer');
+    if (!resultContainer) return;
+    
+    const bgColor = type === 'success' ? 'rgba(16, 185, 129, 0.1)' : 'rgba(239, 68, 68, 0.1)';
+    const borderColor = type === 'success' ? '#10b981' : '#ef4444';
+    const textColor = type === 'success' ? '#047857' : '#b91c1c';
+    const icon = type === 'success' ? '✓' : '⚠';
+    
+    resultContainer.innerHTML = `
+        <div style="
+            background: ${bgColor};
+            border: 1px solid ${borderColor};
+            border-radius: 12px;
+            padding: 12px 14px;
+            display: flex;
+            align-items: center;
+            gap: 10px;
+            color: ${textColor};
+            font-size: 14px;
+            font-weight: 500;
+        ">
+            <span style="font-size: 18px;">${icon}</span>
+            <span>${message}</span>
+        </div>
+    `;
+    resultContainer.style.display = 'block';
+}
+
 document.addEventListener("DOMContentLoaded", function() {
     const studentSelect = document.getElementById('id_student');
     const priceInput = document.getElementById('id_price');
@@ -339,75 +481,121 @@ document.addEventListener("DOMContentLoaded", function() {
         updateDefaults();
     }
 
-    // Recommend Session Time Handler
-    const recommendBtn = document.getElementById('recommendTimeBtn');
-    if(recommendBtn) {
-        recommendBtn.addEventListener('click', function() {
-            const studentId = document.getElementById('id_student').value;
-            const startTimeInput = document.getElementById('id_start_time');
-            const durationInput = document.getElementById('id_duration');
+    // Use event delegation for Recommend Session Time Button
+    document.addEventListener('click', function(e) {
+        if (e.target.id === 'recommendTimeBtn' || e.target.closest('#recommendTimeBtn')) {
+            handleRecommendTime();
+        }
+    });
 
-            if(!studentId) {
-                alert('Please select a student first.');
-                return;
+    function handleRecommendTime() {
+        const recommendBtn = document.getElementById('recommendTimeBtn');
+        if (!recommendBtn) return;
+
+        const studentId = document.getElementById('id_student')?.value;
+        const startTimeInput = document.getElementById('id_start_time');
+        const durationInput = document.getElementById('id_duration');
+
+        if(!studentId) {
+            showToast('Please select a student first.', 'error');
+            showInlineNotification('Please select a student first.', 'error');
+            return;
+        }
+
+        if(!startTimeInput || !startTimeInput.value) {
+            showToast('Please enter a start time first.', 'error');
+            showInlineNotification('Please enter a start time first.', 'error');
+            return;
+        }
+
+        const startTime = startTimeInput.value;
+        const duration = durationInput?.value || 60;
+
+        // Show loading state
+        const originalText = recommendBtn.innerHTML;
+        recommendBtn.disabled = true;
+        recommendBtn.innerHTML = '<i class="fas fa-spinner fa-spin me-1"></i>Searching...';
+        
+        // Clear previous result
+        document.getElementById('recommendationResultContainer').style.display = 'none';
+
+        // Make API request
+        const formData = new FormData();
+        formData.append('student_id', studentId);
+        formData.append('start_time', startTime);
+        formData.append('duration', duration);
+        
+        const csrfToken = document.querySelector('[name="csrfmiddlewaretoken"]')?.value;
+
+        fetch('{% url "scheduler:recommend_session_time" %}', {
+            method: 'POST',
+            headers: {
+                'X-CSRFToken': csrfToken || '',
+            },
+            body: formData
+        })
+        .then(response => response.json())
+        .then(data => {
+            if(data.success && data.recommended_time) {
+                // Parse the ISO datetime and convert to the input format
+                const recommendedDate = new Date(data.recommended_time);
+                const year = recommendedDate.getFullYear();
+                const month = String(recommendedDate.getMonth() + 1).padStart(2, '0');
+                const day = String(recommendedDate.getDate()).padStart(2, '0');
+                const hours = String(recommendedDate.getHours()).padStart(2, '0');
+                const minutes = String(recommendedDate.getMinutes()).padStart(2, '0');
+
+                const formattedTime = `${year}-${month}-${day}T${hours}:${minutes}`;
+                startTimeInput.value = formattedTime;
+
+                // Show success messages
+                showToast(data.message || 'Time slot found! Ready to submit.', 'success');
+                showInlineNotification(data.message || 'Slot updated. Review and submit.', 'success');
+            } else {
+                showToast(data.message || 'No available slots found.', 'error');
+                showInlineNotification(data.message || 'No available slots found in the next 7 days.', 'error');
             }
-
-            if(!startTimeInput.value) {
-                alert('Please enter a start time first.');
-                return;
-            }
-
-            const startTime = startTimeInput.value;
-            const duration = durationInput.value || 60;
-
-            // Show loading state
-            const originalText = recommendBtn.innerHTML;
-            recommendBtn.disabled = true;
-            recommendBtn.innerHTML = '<i class="fas fa-spinner fa-spin me-1"></i>Searching...';
-
-            // Make API request
-            const formData = new FormData();
-            formData.append('student_id', studentId);
-            formData.append('start_time', startTime);
-            formData.append('duration', duration);
-
-            fetch('{% url "scheduler:recommend_session_time" %}', {
-                method: 'POST',
-                headers: {
-                    'X-CSRFToken': document.querySelector('[name="csrfmiddlewaretoken"]').value,
-                },
-                body: formData
-            })
-            .then(response => response.json())
-            .then(data => {
-                if(data.success) {
-                    // Parse the ISO datetime and convert to the input format
-                    const recommendedDate = new Date(data.recommended_time);
-                    const year = recommendedDate.getFullYear();
-                    const month = String(recommendedDate.getMonth() + 1).padStart(2, '0');
-                    const day = String(recommendedDate.getDate()).padStart(2, '0');
-                    const hours = String(recommendedDate.getHours()).padStart(2, '0');
-                    const minutes = String(recommendedDate.getMinutes()).padStart(2, '0');
-
-                    const formattedTime = `${year}-${month}-${day}T${hours}:${minutes}`;
-                    startTimeInput.value = formattedTime;
-
-                    // Show success message
-                    alert('✓ ' + data.message + '\n\nStart time updated. Please review and submit.');
-                } else {
-                    alert('⚠️ ' + data.message);
-                }
-            })
-            .catch(error => {
-                console.error('Error:', error);
-                alert('Failed to get recommendation. Please try again.');
-            })
-            .finally(() => {
-                recommendBtn.disabled = false;
-                recommendBtn.innerHTML = originalText;
-            });
+        })
+        .catch(error => {
+            console.error('Error:', error);
+            showToast('Failed to get recommendation. Please try again.', 'error');
+            showInlineNotification('Error fetching recommendation. Please try again.', 'error');
+        })
+        .finally(() => {
+            recommendBtn.disabled = false;
+            recommendBtn.innerHTML = originalText;
         });
     }
+
+    // Cancel Session Handler with Modern Confirmation
+    document.addEventListener('click', function(e) {
+        if (e.target.closest('.cancel-session-btn')) {
+            e.preventDefault();
+            const btn = e.target.closest('.cancel-session-btn');
+            const formId = btn.getAttribute('data-form-id');
+            const studentName = btn.getAttribute('data-student');
+            const dateInfo = btn.getAttribute('data-date') || '';
+            const form = document.getElementById(formId);
+            
+            if (!form) return;
+
+            const dateText = dateInfo ? ` on ${dateInfo}` : '';
+            const message = `Are you sure you want to cancel the session with ${studentName}${dateText}? This action cannot be undone.`;
+
+            showConfirmation(
+                'Cancel Session?',
+                message,
+                function() {
+                    // Submit the form
+                    form.submit();
+                    showToast(`Session with ${studentName} has been cancelled.`, 'success');
+                },
+                function() {
+                    showToast('Cancellation was aborted.', 'info');
+                }
+            );
+        }
+    });
 });
 </script>
 {% block extra_js %}{% endblock %}

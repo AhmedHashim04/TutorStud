@@ -11,18 +11,6 @@ from .services import generate_sessions_for_student, generate_sessions_for_all_a
 from datetime import datetime
 
 
-
-def get_manual_session_form(request):
-    """Restore the manual session form from session data after a validation failure."""
-    form_data = request.session.pop('manual_session_form_data', None)
-    form_errors = request.session.pop('manual_session_form_errors', None)
-    form = ManualSessionForm(form_data) if form_data else ManualSessionForm()
-    if form_data and form_errors:
-        for error in form_errors:
-            form.add_error(None, error)
-    return form
-
-
 def get_revenue_metrics():
     """Calculate simple revenue metrics for the dashboard."""
     today = timezone.localdate(timezone=CAIRO_TZ)
@@ -209,7 +197,7 @@ def student_detail(request, pk):
         'date_from': date_from,
         'date_to': date_to,
         'student_form': StudentForm(),
-        'session_form': get_manual_session_form(request),
+        'session_form': ManualSessionForm(),
         'students': Student.objects.filter(is_active=True),
     }
     return render(request, 'scheduler/student_detail.html', context)

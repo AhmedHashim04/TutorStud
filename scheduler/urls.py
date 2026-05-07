@@ -43,4 +43,7 @@ urlpatterns = [
     # Basic Settings & API
     path('settings/', views.settings_view, name='settings'),
     path('settings/fetch-prayers/', views.fetch_prayers, name='fetch_prayers'),
+    
+    # Session Recommendation API
+    path('api/recommend-session-time/', views.recommend_session_time, name='recommend_session_time'),
 ]

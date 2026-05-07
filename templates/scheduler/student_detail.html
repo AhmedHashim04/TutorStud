@@ -361,11 +361,11 @@ function showNotification(message, type) {
                                             <button type="button" class="btn btn-sm btn-outline-primary" data-bs-toggle="modal" data-bs-target="#rescheduleStudentModal{{ session.pk }}" title="Edit Date">
                                                 <i class="fas fa-calendar-alt"></i>
                                             </button>
-                                            <form action="{% url 'scheduler:update_session_status' session.pk %}" method="post" class="d-inline" data-ajax-post="true">
+                                            <form action="{% url 'scheduler:update_session_status' session.pk %}" method="post" class="d-inline" data-ajax-post="true" id="cancelDetailForm{{ session.pk }}">
                                                 {% csrf_token %}
                                                 <input type="hidden" name="status" value="cancelled_by_teacher">
                                                 <input type="hidden" name="next" value="{{ request.path }}">
-                                                <button type="submit" class="btn btn-sm btn-outline-danger" title="Cancel Session" onclick="return confirm('Cancel this upcoming session?');">
+                                                <button type="button" class="btn btn-sm btn-outline-danger cancel-session-btn" title="Cancel Session" data-form-id="cancelDetailForm{{ session.pk }}" data-student="{{ session.student.name }}" data-date="{{ session.start_time|date:'M j, Y H:i' }}">
                                                     <i class="fas fa-ban"></i>
                                                 </button>
                                             </form>
