@@ -361,7 +361,7 @@ function showNotification(message, type) {
                                             <button type="button" class="btn btn-sm btn-outline-primary" data-bs-toggle="modal" data-bs-target="#rescheduleStudentModal{{ session.pk }}" title="Edit Date">
                                                 <i class="fas fa-calendar-alt"></i>
                                             </button>
-                                            <form action="{% url 'scheduler:update_session_status' session.pk %}" method="post" class="d-inline">
+                                            <form action="{% url 'scheduler:update_session_status' session.pk %}" method="post" class="d-inline" data-ajax-post="true">
                                                 {% csrf_token %}
                                                 <input type="hidden" name="status" value="cancelled_by_teacher">
                                                 <input type="hidden" name="next" value="{{ request.path }}">
@@ -380,7 +380,7 @@ function showNotification(message, type) {
                                                 <h6 class="modal-title">Edit Upcoming Session</h6>
                                                 <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
                                             </div>
-                                            <form action="{% url 'scheduler:reschedule_session' session.pk %}" method="post">
+                                            <form action="{% url 'scheduler:reschedule_session' session.pk %}" method="post" data-ajax-reschedule="true">
                                                 {% csrf_token %}
                                                 <input type="hidden" name="next" value="{{ request.path }}">
                                                 <div class="modal-body">
@@ -550,4 +550,86 @@ function showNotification(message, type) {
         </div>
     </div>
 </div>
+
+<script>
+(function(){
+    function getCookie(name) {
+        let cookieValue = null;
+        if (document.cookie && document.cookie !== '') {
+            const cookies = document.cookie.split(';');
+            for (let i = 0; i < cookies.length; i++) {
+                const cookie = cookies[i].trim();
+                if (cookie.substring(0, name.length + 1) === (name + '=')) {
+                    cookieValue = decodeURIComponent(cookie.substring(name.length + 1));
+                    break;
+                }
+            }
+        }
+        return cookieValue;
+    }
+
+    function attachAjaxForms(){
+        // reschedule forms
+        document.querySelectorAll('form[data-ajax-reschedule="true"]').forEach(function(form){
+            form.addEventListener('submit', function(e){
+                e.preventDefault();
+                const url = form.action;
+                const fd = new FormData(form);
+                fetch(url, {
+                    method: 'POST',
+                    credentials: 'same-origin',
+                    headers: {
+                        'X-Requested-With': 'XMLHttpRequest',
+                        'X-CSRFToken': getCookie('csrftoken'),
+                        'Accept': 'application/json, text/html'
+                    },
+                    body: fd
+                }).then(function(res){
+                    if (res.ok) return res.text();
+                    return res.text().then(function(t){ throw new Error('Server error'); });
+                }).then(function(){
+                    location.reload();
+                }).catch(function(err){
+                    console.error('Reschedule failed', err);
+                    alert('Failed to reschedule. See console for details.');
+                });
+            });
+        });
+
+        // generic ajax-post forms (status/cancel)
+        document.querySelectorAll('form[data-ajax-post="true"]').forEach(function(form){
+            form.addEventListener('submit', function(e){
+                e.preventDefault();
+                if (!confirm('Proceed with this action?')) return;
+                const url = form.action;
+                const fd = new FormData(form);
+                fetch(url, {
+                    method: 'POST',
+                    credentials: 'same-origin',
+                    headers: {
+                        'X-Requested-With': 'XMLHttpRequest',
+                        'X-CSRFToken': getCookie('csrftoken'),
+                        'Accept': 'application/json, text/html'
+                    },
+                    body: fd
+                }).then(function(res){
+                    if (res.ok) return res.text();
+                    return res.text().then(function(t){ throw new Error('Server error'); });
+                }).then(function(){
+                    location.reload();
+                }).catch(function(err){
+                    console.error('Submit failed', err);
+                    alert('Failed to submit. See console for details.');
+                });
+            });
+        });
+    }
+
+    if (document.readyState === 'loading') {
+        document.addEventListener('DOMContentLoaded', attachAjaxForms);
+    } else {
+        attachAjaxForms();
+    }
+})();
+</script>
 {% endblock %}

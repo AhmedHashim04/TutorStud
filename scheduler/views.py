@@ -186,7 +186,7 @@ def student_detail(request, pk):
     paginator = Paginator(past_sessions, 10)  # 10 sessions per page
     past_sessions_page = paginator.get_page(page_num)
     
-    upcoming_sessions = student.sessions.filter(start_time__gte=now).order_by('start_time')
+    upcoming_sessions = student.sessions.filter(start_time__gte=now, status='scheduled').order_by('start_time')
     
     context = {
         'student': student,
