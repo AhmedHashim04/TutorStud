@@ -2,6 +2,7 @@ from django.shortcuts import render, redirect, get_object_or_404
 from django.contrib import messages
 from django.utils import timezone
 from django.db.models import Sum, Count, Q, F, ExpressionWrapper, FloatField, Value, Case, When
+from django.core.paginator import Paginator
 
 from datetime import timedelta
 from .models import Session, Student, RecurringSchedule, GlobalSettings, PrayerTime, COUNTRY_CHOICES
@@ -32,13 +33,14 @@ def dashboard(request):
     
     today = timezone.localdate(timezone=CAIRO_TZ)
     # Today's sessions
-    today_sessions = Session.objects.filter(start_time__date=today).order_by('start_time')
+    today_sessions = Session.objects.filter(start_time__date=today,student__is_active=True).order_by('start_time')
     
     # Upcoming sessions (Next 3 days)
     upcoming_sessions = Session.objects.filter(
         start_time__date__gt=today, 
         start_time__date__lte=today + timedelta(days=3),
-        status='scheduled'
+        status='scheduled',
+        student__is_active=True
     ).order_by('start_time')
 
     metrics = get_revenue_metrics()
@@ -154,12 +156,47 @@ def student_detail(request, pk):
     now = timezone.now()
     
     past_sessions = student.sessions.filter(start_time__lt=now).order_by('-start_time')
+    
+    # Filter past sessions
+    status_filter = request.GET.get('status', '')
+    date_from = request.GET.get('date_from', '')
+    date_to = request.GET.get('date_to', '')
+    
+    if status_filter:
+        past_sessions = past_sessions.filter(status=status_filter)
+    if date_from:
+        try:
+            from django.utils.dateparse import parse_date
+            date_start = parse_date(date_from)
+            if date_start:
+                past_sessions = past_sessions.filter(start_time__date__gte=date_start)
+        except:
+            pass
+    if date_to:
+        try:
+            from django.utils.dateparse import parse_date
+            date_end = parse_date(date_to)
+            if date_end:
+                past_sessions = past_sessions.filter(start_time__date__lte=date_end)
+        except:
+            pass
+    
+    # Pagination for past sessions
+    page_num = request.GET.get('page', 1)
+    paginator = Paginator(past_sessions, 10)  # 10 sessions per page
+    past_sessions_page = paginator.get_page(page_num)
+    
     upcoming_sessions = student.sessions.filter(start_time__gte=now).order_by('start_time')
     
     context = {
         'student': student,
-        'past_sessions': past_sessions,
+        'past_sessions': past_sessions_page,
         'upcoming_sessions': upcoming_sessions,
+        'paginator': paginator,
+        'status_choices': Session.STATUS_CHOICES,
+        'status_filter': status_filter,
+        'date_from': date_from,
+        'date_to': date_to,
         'student_form': StudentForm(),
         'session_form': ManualSessionForm(),
         'students': Student.objects.filter(is_active=True),
@@ -364,11 +401,11 @@ def api_calendar_events(request):
             if end_dt and timezone.is_naive(end_dt):
                 end_dt = timezone.make_aware(end_dt, timezone.utc)
                 
-            sessions = Session.objects.filter(start_time__gte=start_dt, start_time__lt=end_dt)
+            sessions = Session.objects.filter(start_time__gte=start_dt, start_time__lt=end_dt,student__is_active=True)
         except Exception:
-            sessions = Session.objects.all()
+            sessions = Session.objects.filter(student__is_active=True) 
     else:
-        sessions = Session.objects.all()
+        sessions = Session.objects.filter(student__is_active=True) 
         
     for s in sessions:
         # Determine color based on status

@@ -315,106 +315,209 @@ function showNotification(message, type) {
 
         <!-- RIGHT COLUMN: The Timeline -->
         <div class="col-lg-8">
+            <div class="card shadow-lg border-0">
+                <div class="card-header bg-gradient text-white p-3" style="background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);">
+                    <h5 class="mb-0"><i class="fas fa-timeline me-2"></i>Session Timeline</h5>
+                </div>
 
-            <ul class="nav nav-pills mb-3" id="timelineTabs" role="tablist">
-                <li class="nav-item" role="presentation">
-                    <button class="nav-link active" id="upcoming-tab" data-bs-toggle="pill" data-bs-target="#upcoming"
-                        type="button" role="tab">Upcoming Sessions</button>
-                </li>
-                <li class="nav-item" role="presentation">
-                    <button class="nav-link" id="past-tab" data-bs-toggle="pill" data-bs-target="#past" type="button"
-                        role="tab">Past History</button>
-                </li>
-            </ul>
+                <ul class="nav nav-pills mb-0" id="timelineTabs" role="tablist" style="border-bottom: 1px solid #e9ecef; background: #f8f9fa;">
+                    <li class="nav-item" role="presentation">
+                        <button class="nav-link {% if request.GET.tab != 'past' %}active{% endif %} rounded-0" id="upcoming-tab" data-bs-toggle="pill" data-bs-target="#upcoming"
+                            type="button" role="tab" style="border-bottom: 3px solid {% if request.GET.tab != 'past' %}#667eea{% else %}transparent{% endif %};">Upcoming Sessions</button>
+                    </li>
+                    <li class="nav-item" role="presentation">
+                        <button class="nav-link {% if request.GET.tab == 'past' %}active{% endif %} rounded-0" id="past-tab" data-bs-toggle="pill" data-bs-target="#past" type="button"
+                            role="tab" style="border-bottom: 3px solid {% if request.GET.tab == 'past' %}#667eea{% else %}transparent{% endif %};">Past History</button>
+                    </li>
+                </ul>
 
-            <div class="tab-content" id="timelineTabsContent">
-                <!-- UPCOMING SESSIONS -->
-                <div class="tab-pane fade show active" id="upcoming" role="tabpanel">
-                    <div class="card shadow-sm">
-                        <div class="card-body p-0">
+                <div class="tab-content" id="timelineTabsContent">
+                    <!-- UPCOMING SESSIONS -->
+                    <div class="tab-pane fade {% if request.GET.tab != 'past' %}show active{% endif %}" id="upcoming" role="tabpanel">
+                        <div class="card-body">
                             <div class="list-group list-group-flush">
                                 {% for session in upcoming_sessions %}
-                                <div class="list-group-item p-4">
+                                <div class="list-group-item p-3 border-start border-4">
                                     <div class="row align-items-center">
                                         <div class="col-md-3">
-                                            <h5 class="mb-0">{{ session.start_time|date:"D, M j" }}</h5>
+                                            <h6 class="mb-0 text-primary fw-bold">{{ session.start_time|date:"D, M j" }}</h6>
+                                            <small class="text-muted">{{ session.start_time|date:"Y" }}</small>
                                         </div>
                                         <div class="col-md-6">
                                             <!-- DUAL TIMEZONE RENDERING -->
-                                            <div class="d-flex align-items-center gap-3">
-                                                <div class="bg-light px-2 py-1 rounded">
-                                                    <small class="text-muted d-block" style="font-size: 0.7rem;">🇪🇬 MY
-                                                        TIME</small>
-                                                    <strong>{{ session.tutor_time_formatted }}</strong>
+                                            <div class="d-flex align-items-center gap-2">
+                                                <div class="bg-light px-2 py-1 rounded small">
+                                                    <small class="text-muted d-block" style="font-size: 0.7rem;">🇪🇬 MY TIME</small>
+                                                    <strong class="text-dark">{{ session.tutor_time_formatted }}</strong>
                                                 </div>
-                                                <i class="fas fa-arrow-right text-muted" style="font-size: 0.8rem;"></i>
-                                                <div
-                                                    class="bg-light px-2 py-1 rounded border-start border-primary border-3">
-                                                    <small class="text-muted d-block" style="font-size: 0.7rem;">STUDENT
-                                                        ({{ student.get_country_display|slice:":2" }})</small>
-                                                    <strong>{{ session.student_time_formatted }}</strong>
+                                                <i class="fas fa-chevron-right text-muted"></i>
+                                                <div class="bg-light px-2 py-1 rounded small border-start border-3">
+                                                    <small class="text-muted d-block" style="font-size: 0.7rem;">STUDENT ({{ student.get_country_display|slice:":2" }})</small>
+                                                    <strong class="text-dark">{{ session.student_time_formatted }}</strong>
                                                 </div>
                                             </div>
                                         </div>
                                         <div class="col-md-3 text-end">
-                                            <form action="{% url 'scheduler:delete_session' session.pk %}" method="post"
-                                                class="d-inline">
+                                            <form action="{% url 'scheduler:delete_session' session.pk %}" method="post" class="d-inline">
                                                 {% csrf_token %}
                                                 <input type="hidden" name="next" value="{{ request.path }}">
-                                                <button type="submit" class="btn btn-sm btn-outline-danger"><i
-                                                        class="fas fa-trash"></i></button>
+                                                <button type="submit" class="btn btn-sm btn-outline-danger" title="Delete"><i class="fas fa-trash"></i></button>
                                             </form>
                                         </div>
                                     </div>
                                 </div>
                                 {% empty %}
                                 <div class="p-5 text-center text-muted">
-                                    <i class="fas fa-calendar-times fa-2x mb-3 text-secondary"></i>
-                                    <p class="mb-0">{% trans "No upcoming sessions. Generate some from the dashboard!"
-                                        %}</p>
+                                    <i class="fas fa-calendar-times fa-3x mb-3 text-secondary opacity-50"></i>
+                                    <p class="mb-0">{% trans "No upcoming sessions scheduled." %}</p>
                                 </div>
                                 {% endfor %}
                             </div>
                         </div>
                     </div>
-                </div>
 
-                <!-- PAST SESSIONS -->
-                <div class="tab-pane fade" id="past" role="tabpanel">
-                    <div class="card shadow-sm">
-                        <div class="card-body p-0">
+                    <!-- PAST SESSIONS -->
+                    <div class="tab-pane fade {% if request.GET.tab == 'past' %}show active{% endif %}" id="past" role="tabpanel">
+                        <div class="card-body">
+                            <!-- Past Sessions Filters (single form) -->
+                            <form method="get" id="past-filter-form" class="row g-2 mb-4 p-3 bg-light rounded-3">
+                                <input type="hidden" name="tab" value="past">
+                                <div class="col-md-4">
+                                    <label class="form-label small fw-bold">Status</label>
+                                    <select name="status" class="form-select form-select-sm" id="filter-status">
+                                        <option value="">All Statuses</option>
+                                        {% for value, label in status_choices %}
+                                            <option value="{{ value }}" {% if status_filter == value %}selected{% endif %}>{{ label }}</option>
+                                        {% endfor %}
+                                    </select>
+                                </div>
+                                <div class="col-md-4">
+                                    <label class="form-label small fw-bold">From Date</label>
+                                    <input type="date" name="date_from" value="{{ date_from }}" class="form-control form-control-sm" id="filter-date-from">
+                                </div>
+                                <div class="col-md-4">
+                                    <label class="form-label small fw-bold">To Date</label>
+                                    <input type="date" name="date_to" value="{{ date_to }}" class="form-control form-control-sm" id="filter-date-to">
+                                </div>
+                                <div class="col-12 d-flex gap-2 justify-content-end mt-2">
+                                    <button type="submit" class="btn btn-sm btn-primary">Apply</button>
+                                    <a href="?tab=past" class="btn btn-sm btn-outline-secondary">Reset</a>
+                                </div>
+                            </form>
+
+                            <!-- Past Sessions List -->
                             <div class="list-group list-group-flush">
                                 {% for session in past_sessions %}
-                                <div class="list-group-item p-3">
-                                    <div class="d-flex justify-content-between align-items-center">
-                                        <div>
-                                            <strong>{{ session.start_time|date:"D, M j" }}</strong>
-                                            <span class="text-muted ms-2">{{ session.tutor_time_formatted }}</span>
-                                        </div>
-                                        <div>
-                                            {% if session.status == 'attended' %}
-                                            <span class="badge bg-success">Attended</span>
-                                            {% elif session.status == 'absent' %}
-                                            <span class="badge bg-danger">No-Show</span>
-                                            {% elif session.status == 'excused' %}
-                                            <span class="badge bg-warning">Excused</span>
-                                            {% else %}
-                                            <span class="badge bg-dark">Cancelled</span>
+                                <div class="list-group-item p-3 border-start border-4" style="border-left-color: {% if session.status == 'attended' %}#28a745{% elif session.status == 'absent' %}#dc3545{% elif session.status == 'excused' %}#ffc107{% else %}#6c757d{% endif %};">
+                                    <div class="d-flex justify-content-between align-items-start">
+                                        <div class="flex-grow-1">
+                                            <div class="d-flex gap-2 align-items-center mb-2">
+                                                <strong>{{ session.start_time|date:"D, M j" }}</strong>
+                                                <span class="text-muted ms-2">{{ session.tutor_time_formatted }}</span>
+                                                <span class="text-muted">•</span>
+                                                <small class="text-muted">{{ session.duration }} mins</small>
+                                            </div>
+                                            {% if session.notes %}
+                                            <small class="text-muted d-block">Note: {{ session.notes|truncatewords:10 }}</small>
                                             {% endif %}
+                                        </div>
+                                        <div class="d-flex gap-2 align-items-center">
+                                            {% if session.status == 'attended' %}
+                                            <span class="badge bg-success">✅ Attended</span>
+                                            {% elif session.status == 'absent' %}
+                                            <span class="badge bg-danger">❌ No-Show</span>
+                                            {% elif session.status == 'excused' %}
+                                            <span class="badge bg-warning text-dark">💬 Excused</span>
+                                            {% elif session.status == 'cancelled_by_teacher' %}
+                                            <span class="badge bg-secondary">🚫 Cancelled</span>
+                                            {% else %}
+                                            <span class="badge bg-info">📅 {{ session.get_status_display }}</span>
+                                            {% endif %}
+                                            <button type="button" class="btn btn-sm btn-primary" data-bs-toggle="modal" data-bs-target="#editStatusModal{{ session.pk }}" title="Edit Status">
+                                                <i class="fas fa-edit"></i>
+                                            </button>
+                                        </div>
+                                    </div>
+                                </div>
+
+                                <!-- Edit Status Modal -->
+                                <div class="modal fade" id="editStatusModal{{ session.pk }}" tabindex="-1" aria-hidden="true">
+                                    <div class="modal-dialog modal-sm">
+                                        <div class="modal-content">
+                                            <div class="modal-header">
+                                                <h6 class="modal-title">Edit Session Status</h6>
+                                                <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+                                            </div>
+                                            <form action="{% url 'scheduler:update_session_status' session.pk %}" method="post">
+                                                <input type="hidden" name="next" value="{% if request.GET %}{{ request.get_full_path }}&tab=past{% else %}{{ request.path }}?tab=past{% endif %}">
+                                                {% csrf_token %}
+                                                <div class="modal-body">
+                                                    <label class="form-label fw-bold">Session: {{ session.start_time|date:"M j, Y H:i" }}</label>
+                                                    <select name="status" class="form-select" required>
+                                                        {% for value, label in status_choices %}
+                                                            <option value="{{ value }}" {% if session.status == value %}selected{% endif %}>{{ label }}</option>
+                                                        {% endfor %}
+                                                    </select>
+                                                </div>
+                                                <div class="modal-footer">
+                                                    <button type="button" class="btn btn-secondary btn-sm" data-bs-dismiss="modal">Cancel</button>
+                                                    <button type="submit" class="btn btn-primary btn-sm">Save Status</button>
+                                                </div>
+                                            </form>
                                         </div>
                                     </div>
                                 </div>
                                 {% empty %}
                                 <div class="p-5 text-center text-muted">
-                                    <p class="mb-0">{% trans "No past session history." %}</p>
+                                    <i class="fas fa-history fa-3x mb-3 text-secondary opacity-50"></i>
+                                    <p class="mb-0">No past sessions found.</p>
                                 </div>
                                 {% endfor %}
                             </div>
+
+                            <!-- Pagination -->
+                            {% if paginator.num_pages > 1 %}
+                            <nav aria-label="Page navigation" class="mt-4">
+                                <ul class="pagination justify-content-center">
+                                    {% if past_sessions.has_previous %}
+                                    <li class="page-item">
+                                        <a class="page-link" href="?page=1{% if status_filter %}&status={{ status_filter }}{% endif %}{% if date_from %}&date_from={{ date_from }}{% endif %}{% if date_to %}&date_to={{ date_to }}{% endif %}&tab=past">First</a>
+                                    </li>
+                                    <li class="page-item">
+                                        <a class="page-link" href="?page={{ past_sessions.previous_page_number }}{% if status_filter %}&status={{ status_filter }}{% endif %}{% if date_from %}&date_from={{ date_from }}{% endif %}{% if date_to %}&date_to={{ date_to }}{% endif %}&tab=past">Previous</a>
+                                    </li>
+                                    {% endif %}
+                                    
+                                    {% for num in paginator.page_range %}
+                                        {% if past_sessions.number == num %}
+                                        <li class="page-item active">
+                                            <span class="page-link">{{ num }}</span>
+                                        </li>
+                                        {% elif num > past_sessions.number|add:'-3' and num < past_sessions.number|add:'3' %}
+                                        <li class="page-item">
+                                            <a class="page-link" href="?page={{ num }}{% if status_filter %}&status={{ status_filter }}{% endif %}{% if date_from %}&date_from={{ date_from }}{% endif %}{% if date_to %}&date_to={{ date_to }}{% endif %}&tab=past">{{ num }}</a>
+                                        </li>
+                                        {% endif %}
+                                    {% endfor %}
+                                    
+                                    {% if past_sessions.has_next %}
+                                    <li class="page-item">
+                                        <a class="page-link" href="?page={{ past_sessions.next_page_number }}{% if status_filter %}&status={{ status_filter }}{% endif %}{% if date_from %}&date_from={{ date_from }}{% endif %}{% if date_to %}&date_to={{ date_to }}{% endif %}&tab=past">Next</a>
+                                    </li>
+                                    <li class="page-item">
+                                        <a class="page-link" href="?page={{ paginator.num_pages }}{% if status_filter %}&status={{ status_filter }}{% endif %}{% if date_from %}&date_from={{ date_from }}{% endif %}{% if date_to %}&date_to={{ date_to }}{% endif %}&tab=past">Last</a>
+                                    </li>
+                                    {% endif %}
+                                </ul>
+                            </nav>
+                            <div class="text-center text-muted small mt-2">
+                                Page {{ past_sessions.number }} of {{ paginator.num_pages }} ({{ paginator.count }} total sessions)
+                            </div>
+                            {% endif %}
                         </div>
                     </div>
                 </div>
             </div>
-
         </div>
     </div>
 </div>
