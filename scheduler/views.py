@@ -1,12 +1,16 @@
 from django.shortcuts import render, redirect, get_object_or_404
 from django.contrib import messages
 from django.utils import timezone
-from django.db.models import Sum
+from django.db.models import Sum, Count, Q, F, ExpressionWrapper, FloatField, Value, Case, When
+
 from datetime import timedelta
-from .models import Session, Student, RecurringSchedule, GlobalSettings, PrayerTime
+from .models import Session, Student, RecurringSchedule, GlobalSettings, PrayerTime, COUNTRY_CHOICES
 from .forms import StudentForm, ManualSessionForm, GlobalSettingsForm
 from .services import generate_sessions_for_student, generate_sessions_for_all_active_students, CAIRO_TZ, fetch_cairo_prayer_times
 from datetime import datetime
+
+
+
 def get_revenue_metrics():
     """Calculate simple revenue metrics for the dashboard."""
     today = timezone.localdate(timezone=CAIRO_TZ)
@@ -54,18 +58,95 @@ def dashboard(request):
     return render(request, 'scheduler/dashboard.html', context)
 
 def student_list(request):
-    """List of all students with quick stats."""
-    students = Student.objects.all().order_by('-is_active', 'name')
-    # Attach next session for each
+    """List of all students with advanced filtering and quick stats."""
+    # Base queryset
+    qs = Student.objects.all()
+
+    # --- Annotations for reusable filters ---
     now = timezone.now()
-    for student in students:
+    next_week = now + timedelta(days=7)
+    first_of_month = timezone.localdate(timezone=CAIRO_TZ).replace(day=1)
+
+    qs = qs.annotate(
+        upcoming_sessions=Count('sessions', filter=Q(sessions__start_time__gte=now, sessions__status='scheduled')),
+        weekly_sessions=Count('sessions', filter=Q(sessions__start_time__gte=now, sessions__start_time__lt=next_week, sessions__status='scheduled')),
+        monthly_revenue_calc=Sum('sessions__price', filter=Q(sessions__start_time__date__gte=first_of_month, sessions__status__in=['attended', 'absent']))
+    )
+    # attendance_rate annotation (percentage)
+    qs = qs.annotate(
+        attended_sessions=Count('sessions', filter=Q(sessions__start_time__lt=now, sessions__status='attended')),
+        total_sessions=Count('sessions', filter=Q(sessions__start_time__lt=now) & ~Q(sessions__status__in=['scheduled', 'cancelled_by_teacher']))
+    ).annotate(attendance_rate_calc=Case(
+        When(total_sessions=0, then=Value(0)),
+        default=ExpressionWrapper(100.0 * F('attended_sessions') / F('total_sessions'), output_field=FloatField()),
+        output_field=FloatField()
+    ))
+
+    # --- Parse GET parameters ---
+    name = request.GET.get('name', '').strip()
+    if name:
+        qs = qs.filter(name__icontains=name)
+
+    active = request.GET.get('active')
+    if active == 'active':
+        qs = qs.filter(is_active=True)
+    elif active == 'inactive':
+        qs = qs.filter(is_active=False)
+
+    country = request.GET.get('country')
+    if country:
+        qs = qs.filter(country=country)
+
+    weekly = request.GET.get('weekly')
+    if weekly:
+        if weekly == '1':
+            qs = qs.filter(weekly_sessions=1)
+        elif weekly == '2':
+            qs = qs.filter(weekly_sessions=2)
+        elif weekly == '3plus':
+            qs = qs.filter(weekly_sessions__gte=3)
+
+    if request.GET.get('has_upcoming'):
+        qs = qs.filter(upcoming_sessions__gt=0)
+    if request.GET.get('no_future'):
+        qs = qs.filter(upcoming_sessions=0)
+
+    recent_days = request.GET.get('recent_days')
+    if recent_days and recent_days.isdigit():
+        cutoff = timezone.now().date() - timedelta(days=int(recent_days))
+        qs = qs.filter(created_at__date__gte=cutoff)
+
+    rev_min = request.GET.get('rev_min')
+    rev_max = request.GET.get('rev_max')
+    if rev_min:
+        qs = qs.filter(monthly_revenue_calc__gte=rev_min)
+    if rev_max:
+        qs = qs.filter(monthly_revenue_calc__lte=rev_max)
+
+    att_min = request.GET.get('att_min')
+    att_max = request.GET.get('att_max')
+    if att_min:
+        qs = qs.filter(attendance_rate_calc__gte=att_min)
+    if att_max:
+        qs = qs.filter(attendance_rate_calc__lte=att_max)
+
+    # Preserve ordering and pagination if needed (simple ordering for now)
+    qs = qs.order_by('-is_active', 'name')
+
+    # Attach next session for display (still needed for card)
+    now = timezone.now()
+    for student in qs:
         student.next_session = student.sessions.filter(start_time__gte=now, status='scheduled').order_by('start_time').first()
-        
-    return render(request, 'scheduler/student_list.html', {
-        'students': students,
+
+    context = {
+        'students': qs,
         'student_form': StudentForm(),
         'session_form': ManualSessionForm(),
-    })
+        # Preserve the current GET params for the UI to repopulate fields
+        'filters': request.GET,
+        'country_choices': COUNTRY_CHOICES,
+    }
+    return render(request, 'scheduler/student_list.html', context)
 
 def student_detail(request, pk):
     """Student Profile (Mini OS)"""

@@ -5,8 +5,101 @@
 
 {% block content %}
 <div class="container-fluid py-4">
-    <div class="d-flex justify-content-between align-items-center mb-4">
-        <h3 class="mb-0">{% trans "All Students" %}</h3>
+    <div class="page-header">
+        <div>
+            <h1>{% trans "All Students" %}</h1>
+            <p>{% trans "Search, filter, and review student activity from one place." %}</p>
+        </div>
+        <div class="d-flex align-items-center gap-2 flex-wrap">
+            <span class="badge bg-light text-dark border">{{ students|length }} {% trans "students" %}</span>
+            {% if request.GET %}
+            <a href="{% url 'scheduler:student_list' %}" class="btn btn-outline-secondary btn-sm">
+                <i class="fas fa-times me-1"></i>{% trans "Clear filters" %}
+            </a>
+            {% endif %}
+        </div>
+    </div>
+
+    <div class="card mb-4">
+        <div class="card-body">
+            <form method="get" class="row g-3 align-items-end">
+                <div class="col-lg-4 col-md-6">
+                    <label class="form-label">{% trans "Name" %}</label>
+                    <input type="text" name="name" value="{{ filters.name }}" class="form-control" placeholder="{% trans 'Search by student name' %}">
+                </div>
+                <div class="col-lg-2 col-md-6">
+                    <label class="form-label">{% trans "Status" %}</label>
+                    <select name="active" class="form-select">
+                        <option value="">{% trans "All" %}</option>
+                        <option value="active" {% if filters.active == 'active' %}selected{% endif %}>{% trans "Active" %}</option>
+                        <option value="inactive" {% if filters.active == 'inactive' %}selected{% endif %}>{% trans "Inactive" %}</option>
+                    </select>
+                </div>
+                <div class="col-lg-2 col-md-6">
+                    <label class="form-label">{% trans "Country" %}</label>
+                    <select name="country" class="form-select">
+                        <option value="">{% trans "All countries" %}</option>
+                        {% for value, label in country_choices %}
+                            {% if value %}
+                            <option value="{{ value }}" {% if filters.country == value %}selected{% endif %}>{{ label }}</option>
+                            {% endif %}
+                        {% endfor %}
+                    </select>
+                </div>
+                <div class="col-lg-2 col-md-6">
+                    <label class="form-label">{% trans "Weekly sessions" %}</label>
+                    <select name="weekly" class="form-select">
+                        <option value="">{% trans "Any" %}</option>
+                        <option value="1" {% if filters.weekly == '1' %}selected{% endif %}>1</option>
+                        <option value="2" {% if filters.weekly == '2' %}selected{% endif %}>2</option>
+                        <option value="3plus" {% if filters.weekly == '3plus' %}selected{% endif %}>3+</option>
+                    </select>
+                </div>
+                <div class="col-lg-2 col-md-6">
+                    <label class="form-label">{% trans "Created in last" %}</label>
+                    <select name="recent_days" class="form-select">
+                        <option value="">{% trans "Any time" %}</option>
+                        <option value="7" {% if filters.recent_days == '7' %}selected{% endif %}>7 {% trans "days" %}</option>
+                        <option value="30" {% if filters.recent_days == '30' %}selected{% endif %}>30 {% trans "days" %}</option>
+                        <option value="90" {% if filters.recent_days == '90' %}selected{% endif %}>90 {% trans "days" %}</option>
+                    </select>
+                </div>
+                <div class="col-lg-3 col-md-6">
+                    <label class="form-label">{% trans "Future sessions" %}</label>
+                    <select id="future-filter" class="form-select">
+                        <option value="all" {% if not filters.has_upcoming and not filters.no_future %}selected{% endif %}>{% trans "All students" %}</option>
+                        <option value="has_upcoming" {% if filters.has_upcoming %}selected{% endif %}>{% trans "Has upcoming sessions" %}</option>
+                        <option value="no_future" {% if filters.no_future %}selected{% endif %}>{% trans "No future sessions" %}</option>
+                    </select>
+                </div>
+                <input type="hidden" name="has_upcoming" id="has-upcoming-filter" value="{% if filters.has_upcoming %}1{% endif %}" {% if not filters.has_upcoming %}disabled{% endif %}>
+                <input type="hidden" name="no_future" id="no-future-filter" value="{% if filters.no_future %}1{% endif %}" {% if not filters.no_future %}disabled{% endif %}>
+                <div class="col-lg-2 col-md-6">
+                    <label class="form-label">{% trans "Revenue min" %}</label>
+                    <input type="number" step="0.01" min="0" name="rev_min" value="{{ filters.rev_min }}" class="form-control" placeholder="0">
+                </div>
+                <div class="col-lg-2 col-md-6">
+                    <label class="form-label">{% trans "Revenue max" %}</label>
+                    <input type="number" step="0.01" min="0" name="rev_max" value="{{ filters.rev_max }}" class="form-control" placeholder="500">
+                </div>
+                <div class="col-lg-2 col-md-6">
+                    <label class="form-label">{% trans "Attendance min %" %}</label>
+                    <input type="number" step="1" min="0" max="100" name="att_min" value="{{ filters.att_min }}" class="form-control" placeholder="0">
+                </div>
+                <div class="col-lg-2 col-md-6">
+                    <label class="form-label">{% trans "Attendance max %" %}</label>
+                    <input type="number" step="1" min="0" max="100" name="att_max" value="{{ filters.att_max }}" class="form-control" placeholder="100">
+                </div>
+                <div class="col-12 d-flex gap-2 justify-content-end flex-wrap">
+                    <button type="submit" class="btn btn-primary">
+                        <i class="fas fa-filter me-1"></i>{% trans "Apply filters" %}
+                    </button>
+                    <a href="{% url 'scheduler:student_list' %}" class="btn btn-outline-secondary">
+                        {% trans "Reset" %}
+                    </a>
+                </div>
+            </form>
+        </div>
     </div>
 
     <div class="row row-cols-1 row-cols-md-2 row-cols-xl-3 g-4">
@@ -239,6 +332,29 @@ function showNotification(message, type) {
         alertDiv.remove();
     }, 4000);
 }
+
+document.addEventListener('DOMContentLoaded', function() {
+    const futureFilter = document.getElementById('future-filter');
+    const hasUpcomingInput = document.getElementById('has-upcoming-filter');
+    const noFutureInput = document.getElementById('no-future-filter');
+    const form = futureFilter ? futureFilter.closest('form') : null;
+
+    if (!futureFilter || !hasUpcomingInput || !noFutureInput || !form) {
+        return;
+    }
+
+    const syncFutureFilter = function() {
+        const value = futureFilter.value;
+        hasUpcomingInput.disabled = value !== 'has_upcoming';
+        noFutureInput.disabled = value !== 'no_future';
+        hasUpcomingInput.value = value === 'has_upcoming' ? '1' : '';
+        noFutureInput.value = value === 'no_future' ? '1' : '';
+    };
+
+    syncFutureFilter();
+    futureFilter.addEventListener('change', syncFutureFilter);
+    form.addEventListener('submit', syncFutureFilter);
+});
 </script>
 
 
